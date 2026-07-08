@@ -262,13 +262,9 @@
   100% { transform: scale(2.1); opacity: 0; }
 }
 
-/* mobile first-load intro: LED hidden, then fades on after 1s with 2 pulse rings */
-.scene.intro-led-wait .led-stroke,
-.scene.intro-led-wait .led-bloom { opacity: 0; }
-.scene.intro-led-wait .scene-halo { opacity: 0; }
-
-.scene.intro-pulse .led-stroke { animation: ledIntroIn 1s ease-out forwards; }
-.scene.intro-pulse .led-bloom { animation: ledIntroBloom 1s ease-out forwards; }
+/* mobile first-load intro: LED starts off, then fades to green with 2 pulse rings */
+.scene.intro-pulse .led-svg[data-pat="solid"] .led-stroke { animation: ledIntroIn 1s ease-out forwards; }
+.scene.intro-pulse .led-svg[data-pat="solid"] .led-bloom { animation: ledIntroBloom 1s ease-out forwards; }
 .scene.intro-pulse .scene-halo { animation: ledIntroHalo 1s ease-out forwards; }
 .scene.intro-pulse .face-glow { animation: ledIntroFace 1s ease-out forwards; }
 @keyframes ledIntroIn {

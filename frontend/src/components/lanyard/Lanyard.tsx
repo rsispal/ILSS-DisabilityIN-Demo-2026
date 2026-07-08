@@ -37,10 +37,12 @@ export function Lanyard({
 
   const { feedMomentum, clearMomentum } = useSwingPhysics(swingEnabled, swayRef);
 
+  const displayLedPattern = introLedWait ? 'off' : ledPattern;
+  const displayLedOn = introLedWait ? false : ledOn;
+
   const sceneClasses = [
     'scene',
     buzzerActive ? 'buzz-on' : '',
-    introLedWait ? 'intro-led-wait' : '',
     introPulse ? 'intro-pulse' : '',
   ]
     .filter(Boolean)
@@ -48,7 +50,7 @@ export function Lanyard({
 
   const sceneStyle = {
     '--led-rgb': ledRgb,
-    '--led-on': ledOn && !introLedWait ? 1 : 0,
+    '--led-on': displayLedOn ? 1 : 0,
     '--buzz-dur': buzzerDur + 's',
   } as CSSProperties;
 
@@ -112,7 +114,7 @@ export function Lanyard({
             <div className="ns-strand front" />
             <div className="body" />
             <div className="led-channel" />
-            <svg className="led-svg" viewBox="0 0 232 416" data-pat={ledPattern}>
+            <svg className="led-svg" viewBox="0 0 232 416" data-pat={displayLedPattern}>
               <defs>
                 <clipPath id="clipTop">
                   <rect x={0} y={0} width={232} height={208} />
