@@ -27,11 +27,11 @@ function heightForSnap(snap: SheetSnap): number {
 }
 
 export function useBottomSheet() {
-  const [snap, setSnap] = useState<SheetSnap>('open');
-  const [height, setHeight] = useState(OPEN_H);
+  const [snap, setSnap] = useState<SheetSnap>('collapsed');
+  const [height, setHeight] = useState(COLLAPSED_H);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const drag = useRef({ active: false, startY: 0, startH: OPEN_H, moved: false });
+  const drag = useRef({ active: false, startY: 0, startH: COLLAPSED_H, moved: false });
 
   const applySnap = useCallback((next: SheetSnap) => {
     const adv = next === 'expanded';

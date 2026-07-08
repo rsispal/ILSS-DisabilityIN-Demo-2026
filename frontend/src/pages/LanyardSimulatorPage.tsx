@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { AppMenuBar } from '@/components/layout/AppMenuBar';
 import { AlertBanner } from '@/components/layout/AlertBanner';
@@ -28,6 +28,16 @@ export function LanyardSimulatorPage() {
     useSimulatorState();
   const [pressed, setPressed] = useState<PressedButton>(null);
   const [expOpen, setExpOpen] = useState(false);
+  const [introPhase, setIntroPhase] = useState<'wait' | 'play' | 'done'>('wait');
+
+  useEffect(() => {
+    const playTimer = window.setTimeout(() => setIntroPhase('play'), 1000);
+    const doneTimer = window.setTimeout(() => setIntroPhase('done'), 4300);
+    return () => {
+      window.clearTimeout(playTimer);
+      window.clearTimeout(doneTimer);
+    };
+  }, []);
 
   useAudioOutput(st.buzzer, muted);
   useLanyardScale(sceneRef, isMobile);
@@ -52,6 +62,8 @@ export function LanyardSimulatorPage() {
       buzzerDur={BUZZER_DUR[st.buzzer] || 1.4}
       pressed={pressed}
       swingEnabled={flags.mouseSwing}
+      introLedWait={introPhase === 'wait'}
+      introPulse={introPhase === 'play'}
       onPressPersonal={() =>
         press('personal', () => (st.alert === 'personal' ? clearPersonal() : personalPreset()))
       }

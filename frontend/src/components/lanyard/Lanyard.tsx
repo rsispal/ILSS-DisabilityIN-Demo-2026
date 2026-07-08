@@ -11,6 +11,8 @@ interface LanyardProps {
   buzzerDur: number;
   pressed: PressedButton;
   swingEnabled: boolean;
+  introLedWait?: boolean;
+  introPulse?: boolean;
   onPressPersonal: () => void;
   onPressFire: () => void;
 }
@@ -24,6 +26,8 @@ export function Lanyard({
   buzzerDur,
   pressed,
   swingEnabled,
+  introLedWait = false,
+  introPulse = false,
   onPressPersonal,
   onPressFire: _onPressFire,
 }: LanyardProps) {
@@ -33,9 +37,20 @@ export function Lanyard({
 
   const { feedMomentum, clearMomentum } = useSwingPhysics(swingEnabled, swayRef);
 
+  const displayLedPattern = introLedWait ? 'off' : ledPattern;
+  const displayLedOn = introLedWait || introPulse ? false : ledOn;
+
+  const sceneClasses = [
+    'scene',
+    buzzerActive ? 'buzz-on' : '',
+    introPulse ? 'intro-pulse' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   const sceneStyle = {
     '--led-rgb': ledRgb,
-    '--led-on': ledOn ? 1 : 0,
+    '--led-on': displayLedOn ? 1 : 0,
     '--buzz-dur': buzzerDur + 's',
   } as CSSProperties;
 
@@ -76,7 +91,7 @@ export function Lanyard({
 
   return (
     <div
-      className={'scene' + (buzzerActive ? ' buzz-on' : '')}
+      className={sceneClasses}
       style={sceneStyle}
       onClick={onSceneClick}
       onMouseMove={onSceneMove}
@@ -99,7 +114,7 @@ export function Lanyard({
             <div className="ns-strand front" />
             <div className="body" />
             <div className="led-channel" />
-            <svg className="led-svg" viewBox="0 0 232 416" data-pat={ledPattern}>
+            <svg className="led-svg" viewBox="0 0 232 416" data-pat={displayLedPattern}>
               <defs>
                 <clipPath id="clipTop">
                   <rect x={0} y={0} width={232} height={208} />
