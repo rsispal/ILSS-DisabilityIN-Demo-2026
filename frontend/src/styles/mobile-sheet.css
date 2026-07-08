@@ -1,6 +1,14 @@
 /* ============================================================
    Mobile bottom sheet controls
+   iOS dark material: translucent fill + backdrop blur
    ============================================================ */
+
+:root {
+  --ios-sheet-dark: rgba(28, 28, 30, 0.74);
+  --ios-sheet-blur: blur(40px) saturate(180%);
+  --ios-backdrop-dark: rgba(0, 0, 0, 0.52);
+  --ios-backdrop-blur: blur(20px) saturate(140%);
+}
 
 .mobile-sheet-backdrop {
   position: fixed;
@@ -9,7 +17,9 @@
   border: none;
   padding: 0;
   margin: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--ios-backdrop-dark);
+  backdrop-filter: var(--ios-backdrop-blur);
+  -webkit-backdrop-filter: var(--ios-backdrop-blur);
   cursor: pointer;
   animation: sheetFadeIn 0.2s ease;
 }
@@ -28,14 +38,26 @@
   display: flex;
   flex-direction: column;
   border-radius: 20px 20px 0 0;
-  border: 1px solid var(--panel-border-strong);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-bottom: none;
-  background: rgba(16, 17, 19, 0.96);
-  backdrop-filter: blur(20px) saturate(120%);
-  -webkit-backdrop-filter: blur(20px) saturate(120%);
-  box-shadow: 0 -24px 60px -20px rgba(0, 0, 0, 0.9);
+  background: var(--ios-sheet-dark);
+  backdrop-filter: var(--ios-sheet-blur);
+  -webkit-backdrop-filter: var(--ios-sheet-blur);
+  box-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 -16px 48px rgba(0, 0, 0, 0.45);
   transition: height 0.22s ease;
   touch-action: none;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mobile-sheet-backdrop {
+    background: rgba(0, 0, 0, 0.72);
+  }
+
+  .mobile-sheet {
+    background: rgba(28, 28, 30, 0.96);
+  }
 }
 
 .mobile-sheet-chrome {
@@ -167,8 +189,10 @@
   width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
-  border: 1px solid var(--panel-border);
-  background: rgba(24, 24, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(44, 44, 46, 0.42);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   color: var(--hud-text);
   font-family: inherit;
   cursor: pointer;
@@ -207,7 +231,10 @@
 }
 
 .mobile-sheet-advanced .panel {
-  background: rgba(20, 20, 22, 0.82);
+  background: rgba(44, 44, 46, 0.38);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .mobile-sheet-advanced .panel-pad {
