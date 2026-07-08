@@ -11,6 +11,8 @@ interface LanyardProps {
   buzzerDur: number;
   pressed: PressedButton;
   swingEnabled: boolean;
+  introLedWait?: boolean;
+  introPulse?: boolean;
   onPressPersonal: () => void;
   onPressFire: () => void;
 }
@@ -24,6 +26,8 @@ export function Lanyard({
   buzzerDur,
   pressed,
   swingEnabled,
+  introLedWait = false,
+  introPulse = false,
   onPressPersonal,
   onPressFire: _onPressFire,
 }: LanyardProps) {
@@ -33,9 +37,18 @@ export function Lanyard({
 
   const { feedMomentum, clearMomentum } = useSwingPhysics(swingEnabled, swayRef);
 
+  const sceneClasses = [
+    'scene',
+    buzzerActive ? 'buzz-on' : '',
+    introLedWait ? 'intro-led-wait' : '',
+    introPulse ? 'intro-pulse' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   const sceneStyle = {
     '--led-rgb': ledRgb,
-    '--led-on': ledOn ? 1 : 0,
+    '--led-on': ledOn && !introLedWait ? 1 : 0,
     '--buzz-dur': buzzerDur + 's',
   } as CSSProperties;
 
@@ -76,7 +89,7 @@ export function Lanyard({
 
   return (
     <div
-      className={'scene' + (buzzerActive ? ' buzz-on' : '')}
+      className={sceneClasses}
       style={sceneStyle}
       onClick={onSceneClick}
       onMouseMove={onSceneMove}
