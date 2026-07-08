@@ -1,0 +1,292 @@
+/* ============================================================
+   Mobile bottom sheet controls
+   iOS dark material: translucent fill + backdrop blur
+   ============================================================ */
+
+:root {
+  /* Dark adaptation of iOS material: same blur + ~65% tint as light glass */
+  --ios-sheet-dark: rgba(28, 28, 30, 0.65);
+  --ios-sheet-blur: saturate(180%) blur(20px);
+}
+
+.mobile-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  animation: sheetFadeIn 0.2s ease;
+}
+
+@keyframes sheetFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mobile-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px 20px 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  background-color: var(--ios-sheet-dark);
+  -webkit-backdrop-filter: var(--ios-sheet-blur);
+  backdrop-filter: var(--ios-sheet-blur);
+  box-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 -16px 48px rgba(0, 0, 0, 0.35);
+  transition: height 0.22s ease;
+  touch-action: none;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mobile-sheet {
+    background-color: rgba(28, 28, 30, 0.88);
+  }
+}
+
+.mobile-sheet-chrome {
+  position: relative;
+  flex: none;
+}
+
+.mobile-sheet-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(118, 118, 128, 0.32);
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+
+.mobile-sheet-close:hover {
+  background: rgba(118, 118, 128, 0.48);
+  color: #fff;
+}
+
+.mobile-sheet-close:active {
+  transform: scale(0.94);
+  background: rgba(118, 118, 128, 0.56);
+}
+
+.mobile-sheet.dragging {
+  transition: none;
+}
+
+.mobile-sheet.collapsed:not(.dragging) {
+  transition: height 0.26s ease;
+}
+
+.mobile-sheet-handle {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.mobile-sheet:not(.collapsed) .mobile-sheet-handle {
+  min-height: 52px;
+  padding: 14px 56px 22px;
+  justify-content: center;
+}
+
+.mobile-sheet-handle:active {
+  cursor: grabbing;
+}
+
+.mobile-sheet-grab {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.mobile-sheet-handle-hint {
+  font-size: 11px;
+  color: var(--hud-dim);
+  letter-spacing: 0.2px;
+}
+
+.mobile-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 14px calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-sheet:not(.collapsed) .mobile-sheet-body {
+  padding-top: 8px;
+}
+
+.mobile-sheet:not(.collapsed) .mobile-sheet-primary {
+  padding-top: 4px;
+}
+
+.mobile-sheet.collapsed .mobile-sheet-body {
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.mobile-sheet-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-sheet-primary .alert-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-sheet-primary .alert-btn {
+  width: 100%;
+}
+
+.mobile-sheet-advanced-toggle {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 2px 10px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(44, 44, 46, 0.28);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  backdrop-filter: saturate(160%) blur(12px);
+  color: var(--hud-text);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.mobile-sheet-advanced-toggle > span:first-child {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.mobile-sheet-advanced-meta {
+  grid-column: 1;
+  font-size: 11px;
+  color: var(--hud-dim);
+}
+
+.mobile-sheet-chev {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  width: 18px;
+  height: 18px;
+  color: var(--hud-faint);
+  transition: transform 0.2s ease;
+}
+
+.mobile-sheet-chev.up {
+  transform: rotate(180deg);
+}
+
+.mobile-sheet-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 4px;
+}
+
+.mobile-sheet-advanced .panel {
+  background-color: rgba(44, 44, 46, 0.24);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  backdrop-filter: saturate(160%) blur(12px);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.mobile-sheet-advanced .panel-pad {
+  padding: 14px;
+}
+
+/* ============================================================
+   Mobile app layout — lanyard fills space above sheet
+   ============================================================ */
+
+.app--mobile {
+  --sheet-peek: 380px;
+}
+
+.app--mobile .stage {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  padding: 6px 10px 0;
+  min-height: 0;
+}
+
+.app--mobile .col-left,
+.app--mobile .col-right {
+  display: none;
+}
+
+.app--mobile .col-scene {
+  order: 0;
+  min-height: 0;
+  height: calc(100dvh - var(--sheet-peek) - var(--mobile-header, 52px));
+  max-height: calc(100dvh - var(--sheet-peek) - var(--mobile-header, 52px));
+  padding-bottom: 4px;
+  transition: height 0.22s ease, max-height 0.22s ease;
+}
+
+.app--mobile .col-scene.sheet-dragging {
+  transition: none;
+}
+
+.app--mobile:has(.alert-banner) .col-scene {
+  height: calc(100dvh - var(--sheet-peek) - var(--mobile-header, 52px) - 52px);
+  max-height: calc(100dvh - var(--sheet-peek) - var(--mobile-header, 52px) - 52px);
+}
+
+.app--mobile .experiments-fab {
+  display: none;
+}
+
+/* shrink menu bar on narrow screens */
+@media (max-width: 900px) {
+  .app-menu-bar .brand-title {
+    font-size: 13px;
+  }
+  .app-menu-bar .brand-sub {
+    font-size: 9.5px;
+    letter-spacing: 1.1px;
+  }
+  .app-menu-bar-brand {
+    gap: 10px;
+  }
+}

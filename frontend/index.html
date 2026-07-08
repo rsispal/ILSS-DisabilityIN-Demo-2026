@@ -5,41 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ILSS Lanyard Simulator</title>
 
-  <link rel="stylesheet" href="_ds/forge-common-ui-library-a68de1eb-0d1a-4330-b96f-9932154b0b27/fonts/fonts.css">
-  <link rel="stylesheet" href="_ds/forge-common-ui-library-a68de1eb-0d1a-4330-b96f-9932154b0b27/_ds_bundle.css">
-  <link rel="stylesheet" href="_ds/forge-common-ui-library-a68de1eb-0d1a-4330-b96f-9932154b0b27/styles.css">
-  <link rel="stylesheet" href="styles.css">
-
-  <template id="__bundler_thumbnail">
-    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <rect width="100" height="100" fill="#0a0e18"/>
-      <rect x="38" y="22" width="24" height="42" rx="9" fill="none" stroke="#2be27a" stroke-width="3"/>
-      <rect x="42" y="27" width="16" height="32" rx="6" fill="#15171c"/>
-    </svg>
-  </template>
+  <link rel="stylesheet" href="/_ds/forge-common-ui-library-a68de1eb-0d1a-4330-b96f-9932154b0b27/fonts/fonts.css">
+  <link rel="stylesheet" href="/_ds/forge-common-ui-library-a68de1eb-0d1a-4330-b96f-9932154b0b27/_ds_bundle.css">
+  <link rel="stylesheet" href="/_ds/forge-common-ui-library-a68de1eb-0d1a-4330-b96f-9932154b0b27/styles.css">
 </head>
 <body class="dark">
   <div id="root"></div>
-
-  <script>
-    // Forge DS components emit React "unique key" dev-warnings from their own
-    // internal arrays; silence that one upstream message so the console stays clean.
-    (function () {
-      const orig = console.error;
-      console.error = function (msg) {
-        if (typeof msg === 'string' && msg.indexOf('unique "key" prop') !== -1) return;
-        return orig.apply(console, arguments);
-      };
-    })();
-  </script>
-
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="_ds/forge-common-ui-library-a68de1eb-0d1a-4330-b96f-9932154b0b27/_ds_bundle.js"></script>
-
-  <script src="audio.js"></script>
-  <script src="lanyard.js"></script>
-  <script src="ble.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="/src/bootstrap.ts"></script>
 </body>
 </html>
