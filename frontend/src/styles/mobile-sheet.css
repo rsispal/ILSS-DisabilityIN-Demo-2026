@@ -208,28 +208,16 @@
   display: none;
 }
 
-/* shrink header on narrow screens */
+/* shrink menu bar on narrow screens */
 @media (max-width: 900px) {
-  .brand-title {
+  .app-menu-bar .brand-title {
     font-size: 13px;
   }
-  .brand-sub {
+  .app-menu-bar .brand-sub {
     font-size: 9.5px;
     letter-spacing: 1.1px;
   }
-  .brand-line {
+  .app-menu-bar-brand {
     gap: 10px;
-  }
-  .header-right {
-    gap: 10px;
-  }
-  .ble-chip {
-    padding: 5px 8px;
-    font-size: 11px;
-  }
-  .ble-chip-text {
-    max-width: 92px;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }

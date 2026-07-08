@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { AppHeader } from '@/components/layout/AppHeader';
+import { AppMenuBar } from '@/components/layout/AppMenuBar';
 import { AlertBanner } from '@/components/layout/AlertBanner';
 import { EmergencyControls } from '@/components/controls/EmergencyControls';
 import { DeviceTelemetry } from '@/components/controls/DeviceTelemetry';
@@ -65,7 +65,7 @@ export function LanyardSimulatorPage() {
     <AppShell
       alert={st.alert}
       sceneRef={sceneRef}
-      header={<AppHeader />}
+      header={<AppMenuBar />}
       banner={<AlertBanner level={st.alert} />}
       left={
         <>

@@ -1,18 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/ds/forge';
 import { BtIcon, ChevIcon } from '@/lib/constants/icons';
+import { useBleConnect } from '@/hooks/useBleConnect';
 
-type BleStatus = 'disconnected' | 'connecting' | 'connected';
-
+/** Standalone BLE chip — kept for layout experiments; header uses UserAvatarMenu. */
 export function BleConnect() {
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState<BleStatus>('disconnected');
-  const [name, setName] = useState<string | null>(null);
-  const [msg, setMsg] = useState('');
-  const deviceRef = useRef<BluetoothDevice | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-
-  const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
+  const ble = useBleConnect();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -30,72 +25,8 @@ export function BleConnect() {
     };
   }, [open]);
 
-  const onDisconnected = useCallback(() => {
-    setStatus('disconnected');
-    setName(null);
-    setMsg('Device disconnected');
-  }, []);
-
-  async function pair() {
-    setMsg('');
-    if (!navigator.bluetooth) {
-      setMsg('Web Bluetooth isn’t available in this browser.');
-      return;
-    }
-    try {
-      setStatus('connecting');
-      const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: ['battery_service', 'device_information'],
-      });
-      deviceRef.current = device;
-      device.addEventListener('gattserverdisconnected', onDisconnected);
-      await device.gatt!.connect();
-      setName(device.name || 'ILSS Lanyard');
-      setStatus('connected');
-      setMsg('');
-    } catch (err) {
-      setStatus('disconnected');
-      const error = err as Error & { name?: string };
-      if (error?.name === 'NotFoundError') setMsg('No device selected.');
-      else if (error?.name === 'SecurityError')
-        setMsg('Bluetooth is blocked by the browser’s permissions here.');
-      else setMsg(error?.message || 'Pairing failed.');
-    }
-  }
-
-  function simulate() {
-    setMsg('');
-    setStatus('connecting');
-    setTimeout(() => {
-      setName('ILSS-LY · 04A7-22F1');
-      setStatus('connected');
-    }, 750);
-  }
-
-  function disconnect() {
-    const d = deviceRef.current;
-    try {
-      if (d?.gatt?.connected) d.gatt.disconnect();
-    } catch {
-      /* ignore */
-    }
-    deviceRef.current = null;
-    setStatus('disconnected');
-    setName(null);
-    setMsg('');
-  }
-
-  const dotClass = status === 'connected' ? 'on' : status === 'connecting' ? 'busy' : 'off';
-  const chipText =
-    status === 'connected'
-      ? 'BLE · Connected'
-      : status === 'connecting'
-        ? 'BLE · Connecting…'
-        : 'BLE · Disconnected';
-
   let body;
-  if (status === 'connected') {
+  if (ble.status === 'connected') {
     body = (
       <div>
         <div className="ble-device">
@@ -103,7 +34,7 @@ export function BleConnect() {
             <BtIcon style={{ width: 18, height: 18 }} />
           </span>
           <div className="ble-device-meta">
-            <div className="ble-device-name">{name || 'ILSS Lanyard'}</div>
+            <div className="ble-device-name">{ble.name || 'ILSS Lanyard'}</div>
             <div className="ble-device-sub">GATT server connected</div>
           </div>
           <span className="ble-pill ok">Live</span>
@@ -112,7 +43,7 @@ export function BleConnect() {
           <Button
             variant="destructive-secondary"
             size="regular"
-            onClick={disconnect}
+            onClick={ble.disconnect}
             style={{ width: '100%' }}
           >
             Disconnect
@@ -121,7 +52,7 @@ export function BleConnect() {
       </div>
     );
   } else {
-    const connecting = status === 'connecting';
+    const connecting = ble.status === 'connecting';
     body = (
       <div>
         <p className="ble-lead">
@@ -131,20 +62,20 @@ export function BleConnect() {
           <Button
             variant="primary"
             size="regular"
-            onClick={pair}
+            onClick={ble.pair}
             disabled={connecting}
             style={{ width: '100%' }}
           >
             {connecting ? 'Connecting…' : 'Pair device'}
           </Button>
         </div>
-        {!supported && (
+        {!ble.supported && (
           <div className="ble-fallback">
             <span className="ble-note">Web Bluetooth unavailable in this view.</span>
             <Button
               variant="quiet-secondary"
               size="regular"
-              onClick={simulate}
+              onClick={ble.simulate}
               disabled={connecting}
               style={{ width: '100%' }}
             >
@@ -165,8 +96,8 @@ export function BleConnect() {
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <span className={'ble-dot ' + dotClass} />
-        <span className="ble-chip-text">{chipText}</span>
+        <span className={'ble-dot ' + ble.dotClass} />
+        <span className="ble-chip-text">{ble.chipText}</span>
         <ChevIcon
           className={'ble-chev' + (open ? ' up' : '')}
           style={{ width: 13, height: 13 }}
@@ -184,7 +115,7 @@ export function BleConnect() {
             </div>
           </div>
           {body}
-          {msg && <div className="ble-msg">{msg}</div>}
+          {ble.msg && <div className="ble-msg">{ble.msg}</div>}
         </div>
       )}
     </div>

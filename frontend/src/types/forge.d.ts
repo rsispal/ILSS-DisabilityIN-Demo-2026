@@ -8,6 +8,7 @@ export interface ForgeCommonNamespace {
   Logo: ComponentType<{
     icon?: boolean;
     iconVariant?: string;
+    className?: string;
     style?: CSSProperties;
   }>;
   Avatar: ComponentType<{
@@ -33,10 +34,13 @@ export interface ForgeCommonNamespace {
   Button: ComponentType<{
     variant?: string;
     size?: string;
+    icon?: ReactNode;
+    iconPosition?: string;
     onClick?: () => void;
     disabled?: boolean;
     style?: CSSProperties;
     children?: ReactNode;
+    'aria-label'?: string;
   }>;
   Control: ComponentType<{ children?: ReactNode }>;
   Label: ComponentType<{ htmlFor?: string; children?: ReactNode }>;

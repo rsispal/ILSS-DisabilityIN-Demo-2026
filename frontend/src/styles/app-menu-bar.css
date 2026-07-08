@@ -1,0 +1,294 @@
+/* ============================================================
+   Custom app menu bar — mirrors Forge Header layout
+   ============================================================ */
+
+.app-menu-bar-wrap {
+  position: relative;
+  z-index: 30;
+}
+
+.app-menu-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 30;
+  display: grid;
+  height: 3rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: rgba(var(--color-application-dark), 1);
+  font-family: 'Honeywell Sans Web Common', system-ui, sans-serif;
+}
+
+.app-menu-bar::after {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1rem;
+  display: block;
+  height: 1rem;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(var(--color-application-dark), 1),
+    rgba(var(--color-application-dark), 0)
+  );
+  content: '';
+}
+
+@media (min-width: 769px) {
+  .app-menu-bar {
+    height: 3.5rem;
+    padding: 1rem 1.5rem 0.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-menu-bar {
+    height: 4rem;
+    padding: 1rem 1.5rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .app-menu-bar {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+.app-menu-bar-spacer {
+  height: 4rem;
+  flex: none;
+}
+
+@media (min-width: 769px) {
+  .app-menu-bar-spacer {
+    height: 4.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-menu-bar-spacer {
+    height: 5rem;
+  }
+}
+
+.app-menu-bar-toggle {
+  grid-column: 1;
+  margin-left: -0.25rem;
+}
+
+.app-menu-bar-toggle button {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  transform: translateY(1px);
+}
+
+.app-menu-bar-brand {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.app-menu-bar-logo {
+  flex: none;
+}
+
+.app-menu-bar-logo svg {
+  display: block;
+  height: 13px;
+  width: auto;
+}
+
+.app-menu-bar-titles {
+  min-width: 0;
+}
+
+.app-menu-bar-right {
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Brand text (shared with legacy header tweaks) */
+.app-menu-bar .brand-divider {
+  width: 1px;
+  height: 26px;
+  flex: none;
+  background: linear-gradient(var(--panel-border-strong), transparent);
+}
+
+.app-menu-bar .brand-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--hud-text);
+  white-space: nowrap;
+}
+
+.app-menu-bar .brand-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--hud-dim);
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+/* ---------- User avatar menu ---------- */
+.user-avatar-menu {
+  position: relative;
+}
+
+.user-avatar-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 4px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(18, 18, 20, 0.5);
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.user-avatar-trigger:hover {
+  border-color: var(--panel-border-strong);
+  background: rgba(24, 24, 26, 0.72);
+}
+
+.user-avatar-stack {
+  position: relative;
+  display: inline-flex;
+}
+
+.user-avatar-ble-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--color-application-dark), 1);
+  box-sizing: content-box;
+}
+
+.user-avatar-ble-dot.on {
+  background: rgb(43, 226, 122);
+  box-shadow: 0 0 6px rgba(43, 226, 122, 0.9);
+}
+
+.user-avatar-ble-dot.busy {
+  background: rgb(255, 190, 60);
+  box-shadow: 0 0 6px rgba(255, 190, 60, 0.9);
+}
+
+.user-avatar-ble-dot.off {
+  background: #5a5d63;
+}
+
+.user-avatar-chev {
+  color: var(--hud-faint);
+  transition: transform 0.18s ease;
+}
+
+.user-avatar-chev.up {
+  transform: rotate(180deg);
+}
+
+.user-avatar-pop {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  z-index: 60;
+  background: rgba(20, 21, 23, 0.94);
+  border: 1px solid var(--panel-border-strong);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow:
+    0 26px 60px -24px rgba(0, 0, 0, 0.92),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  animation: blePop 0.16s ease-out;
+}
+
+.user-avatar-pop-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.user-avatar-pop-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-avatar-pop-name {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--hud-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-avatar-pop-ble {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--hud-dim);
+}
+
+.user-avatar-pop-divider {
+  height: 1px;
+  margin: 0 0 14px;
+  background: var(--panel-border);
+}
+
+.ble-menu-panel .ble-pop-head {
+  margin-bottom: 12px;
+}
+
+/* Mobile header compaction */
+@media (max-width: 900px) {
+  .app-menu-bar .brand-title {
+    font-size: 13px;
+  }
+
+  .app-menu-bar .brand-sub {
+    font-size: 9.5px;
+    letter-spacing: 1.1px;
+  }
+
+  .app-menu-bar-brand {
+    gap: 10px;
+  }
+
+  .user-avatar-pop {
+    width: min(320px, calc(100vw - 24px));
+  }
+}
+
+@media (max-width: 640px) {
+  .app-menu-bar .brand-sub {
+    display: none;
+  }
+
+  .app-menu-bar-logo svg {
+    height: 11px;
+  }
+}
