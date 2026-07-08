@@ -14,7 +14,6 @@ import { ExperimentsModal } from '@/components/experiments/ExperimentsModal';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useSimulatorState } from '@/hooks/useSimulatorState';
 import { useAudioOutput } from '@/hooks/useAudioOutput';
-import { useDeviceHaptics } from '@/hooks/useDeviceHaptics';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useLanyardScale } from '@/hooks/useLanyardScale';
 import { COLORS } from '@/lib/constants/colors';
@@ -31,7 +30,6 @@ export function LanyardSimulatorPage() {
   const [expOpen, setExpOpen] = useState(false);
 
   useAudioOutput(st.buzzer, muted);
-  useDeviceHaptics(st.haptic);
   useLanyardScale(sceneRef, isMobile);
 
   const press = (which: PressedButton, fn: () => void) => {
@@ -106,12 +104,13 @@ export function LanyardSimulatorPage() {
             onClearPersonal={clearPersonal}
             onChange={setCh}
             onMutedChange={setMuted}
+            onOpenExperiments={() => setExpOpen(true)}
           />
         ) : undefined
       }
       footer={
         <>
-          <ExperimentsFab onOpen={() => setExpOpen(true)} />
+          {!isMobile && <ExperimentsFab onOpen={() => setExpOpen(true)} />}
           {expOpen && (
             <ExperimentsModal
               flags={flags}

@@ -2,75 +2,105 @@
    Mobile bottom sheet controls
    ============================================================ */
 
+.mobile-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  animation: sheetFadeIn 0.2s ease;
+}
+
+@keyframes sheetFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .mobile-sheet {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 50;
-  max-height: min(78vh, 640px);
   display: flex;
   flex-direction: column;
   border-radius: 20px 20px 0 0;
   border: 1px solid var(--panel-border-strong);
   border-bottom: none;
-  background: rgba(16, 17, 19, 0.94);
+  background: rgba(16, 17, 19, 0.96);
   backdrop-filter: blur(20px) saturate(120%);
   -webkit-backdrop-filter: blur(20px) saturate(120%);
   box-shadow: 0 -24px 60px -20px rgba(0, 0, 0, 0.9);
-  transition: max-height 0.28s ease;
+  transition: height 0.22s ease;
+  touch-action: none;
 }
 
-.mobile-sheet.expanded {
-  max-height: min(86vh, 720px);
+.mobile-sheet.dragging {
+  transition: none;
+}
+
+.mobile-sheet.collapsed:not(.dragging) {
+  transition: height 0.26s ease;
+}
+
+.mobile-sheet-handle {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.mobile-sheet-handle:active {
+  cursor: grabbing;
 }
 
 .mobile-sheet-grab {
   width: 40px;
   height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  margin: 10px auto 6px;
-  flex: none;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.mobile-sheet-handle-hint {
+  font-size: 11px;
+  color: var(--hud-dim);
+  letter-spacing: 0.2px;
 }
 
 .mobile-sheet-body {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 0 14px calc(14px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
+.mobile-sheet.collapsed .mobile-sheet-body {
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+
 .mobile-sheet-primary {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
 .mobile-sheet-primary .alert-btn {
-  padding: 14px 12px;
-  gap: 10px;
-}
-
-.mobile-sheet-primary .alert-btn .ab-icon {
-  width: 36px;
-  height: 36px;
-}
-
-.mobile-sheet-primary .alert-btn .ab-icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.mobile-sheet-primary .alert-btn .ab-title {
-  font-size: 13px;
-}
-
-.mobile-sheet-primary .alert-btn .ab-desc {
-  font-size: 10.5px;
-  line-height: 1.35;
+  width: 100%;
 }
 
 .mobile-sheet-advanced-toggle {
@@ -129,20 +159,12 @@
   padding: 14px;
 }
 
-.mobile-sheet-hint {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--hud-faint);
-  padding: 0 2px 4px;
-}
-
 /* ============================================================
    Mobile app layout — lanyard fills space above sheet
    ============================================================ */
 
 .app--mobile {
-  --sheet-peek: 200px;
+  --sheet-peek: 268px;
 }
 
 .app--mobile .stage {
@@ -164,6 +186,11 @@
   height: calc(100dvh - var(--sheet-peek) - var(--mobile-header, 52px));
   max-height: calc(100dvh - var(--sheet-peek) - var(--mobile-header, 52px));
   padding-bottom: 4px;
+  transition: height 0.22s ease, max-height 0.22s ease;
+}
+
+.app--mobile .col-scene.sheet-dragging {
+  transition: none;
 }
 
 .app--mobile:has(.alert-banner) .col-scene {
@@ -172,15 +199,7 @@
 }
 
 .app--mobile .experiments-fab {
-  left: 14px;
-  bottom: calc(var(--sheet-peek) + 12px + env(safe-area-inset-bottom, 0px));
-  z-index: 55;
-}
-
-.app--mobile .experiments-fab .button,
-.app--mobile .experiments-fab button {
-  padding: 8px 12px;
-  font-size: 12px;
+  display: none;
 }
 
 /* shrink header on narrow screens */
