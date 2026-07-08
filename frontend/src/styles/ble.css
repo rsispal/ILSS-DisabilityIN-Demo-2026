@@ -1,0 +1,93 @@
+.ble-wrap { position: relative; }
+.ble-chip {
+  display: flex; align-items: center; gap: 8px;
+  font-family: inherit;
+  font-size: 12px; color: var(--hud-dim); font-weight: 500;
+  padding: 6px 10px 6px 12px; border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(18, 18, 20, 0.5);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.ble-chip:hover { border-color: var(--panel-border-strong); color: var(--hud-text); }
+.ble-chip-text { white-space: nowrap; }
+.ble-chev { color: var(--hud-faint); transition: transform 0.18s ease; }
+.ble-chev.up { transform: rotate(180deg); }
+.ble-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+}
+.ble-dot.on {
+  background: rgb(43, 226, 122);
+  box-shadow: 0 0 8px rgba(43,226,122,0.9);
+  animation: blePulse 2.4s ease-in-out infinite;
+}
+.ble-dot.busy {
+  background: rgb(255, 190, 60);
+  box-shadow: 0 0 8px rgba(255,190,60,0.9);
+  animation: blePulse 0.9s ease-in-out infinite;
+}
+.ble-dot.off { background: #5a5d63; box-shadow: none; }
+@keyframes blePulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ---------- BLE popout panel ---------- */
+.ble-pop {
+  position: absolute; top: calc(100% + 10px); right: 0;
+  width: 300px; z-index: 60;
+  background: rgba(20, 21, 23, 0.92);
+  border: 1px solid var(--panel-border-strong);
+  border-radius: 14px; padding: 16px;
+  box-shadow: 0 26px 60px -24px rgba(0,0,0,0.92), inset 0 1px 0 rgba(255,255,255,0.04);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  animation: blePop 0.16s ease-out;
+}
+@keyframes blePop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+.ble-pop-head { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+.ble-pop-ic {
+  width: 32px; height: 32px; border-radius: 9px; flex: none;
+  display: grid; place-items: center;
+  background: rgba(120,140,255,0.12); color: #9fb0ff;
+}
+.ble-pop-title { font-size: 13.5px; font-weight: 650; color: var(--hud-text); }
+.ble-pop-sub { font-size: 11px; color: var(--hud-faint); letter-spacing: 0.3px; margin-top: 1px; }
+.ble-lead { font-size: 12.5px; line-height: 1.5; color: var(--hud-dim); margin: 0 0 14px; }
+.ble-actions { display: flex; flex-direction: column; gap: 9px; }
+.ble-device {
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 12px; margin-bottom: 13px;
+  border: 1px solid var(--panel-border); border-radius: 11px;
+  background: rgba(12,13,15,0.55);
+}
+.ble-device-ic {
+  width: 30px; height: 30px; border-radius: 8px; flex: none;
+  display: grid; place-items: center;
+  background: rgba(43,226,122,0.14); color: #2be27a;
+}
+.ble-device-meta { flex: 1; min-width: 0; }
+.ble-device-name { font-size: 12.5px; font-weight: 600; color: var(--hud-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ble-device-sub { font-size: 10.5px; color: var(--hud-faint); margin-top: 2px; }
+.ble-pill {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px; flex: none;
+}
+.ble-pill.ok { color: #2be27a; background: rgba(43,226,122,0.14); }
+.ble-fallback {
+  margin-top: 11px; padding-top: 12px;
+  border-top: 1px solid var(--panel-border);
+  display: flex; flex-direction: column; gap: 9px;
+}
+.ble-note { font-size: 11px; color: var(--hud-faint); }
+.ble-msg {
+  margin-top: 12px; font-size: 11.5px; color: #d8b06a;
+  background: rgba(216,176,106,0.1); border: 1px solid rgba(216,176,106,0.25);
+  padding: 8px 10px; border-radius: 9px;
+}
+/* button fallback if Forge Button unavailable */
+.ble-btn {
+  font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  padding: 9px 14px; border-radius: 9px; border: 1px solid transparent; width: 100%;
+}
+.ble-btn.primary { background: #2f6fe0; color: #fff; }
+.ble-btn.danger { background: rgba(255,80,72,0.16); color: #ff7a70; border-color: rgba(255,80,72,0.4); }
+.ble-btn.quiet { background: rgba(255,255,255,0.06); color: var(--hud-text); border-color: var(--panel-border); }
+.ble-btn:disabled { opacity: 0.5; cursor: not-allowed; }

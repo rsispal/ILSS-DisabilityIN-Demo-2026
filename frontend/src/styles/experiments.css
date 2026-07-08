@@ -1,0 +1,56 @@
+/* ---------- experiments launcher + feature flags ---------- */
+.experiments-fab {
+  position: fixed; left: 22px; bottom: 22px; z-index: 40;
+}
+.experiments-fab .button,
+.experiments-fab button {
+  box-shadow: 0 10px 26px -10px rgba(0,0,0,0.8);
+}
+.flag-row {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  padding: 14px 0;
+}
+.flag-text { flex: 1; }
+.flag-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 600; color: var(--hud-text, #d7d8da);
+}
+.flag-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 20px;
+  color: #c4b5fd; background: rgba(124,58,237,0.22); border: 1px solid rgba(167,139,250,0.35);
+}
+.flag-desc {
+  margin-top: 5px; font-size: 12.5px; line-height: 1.55; color: var(--hud-dim, #8b8d92);
+}
+.flag-sep { height: 1px; background: rgba(255,255,255,0.08); }
+
+/* native toggle — dark theme */
+.flag-toggle { display: flex; align-items: center; flex-shrink: 0; cursor: pointer; }
+.flag-toggle input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.flag-toggle-track {
+  position: relative; width: 44px; height: 24px; border-radius: 12px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.12);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.flag-toggle input:checked + .flag-toggle-track {
+  background: #2563eb; border-color: #3b82f6;
+}
+.flag-toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transition: transform 0.18s ease;
+}
+.flag-toggle input:checked + .flag-toggle-track .flag-toggle-thumb { transform: translateX(20px); }
+
+
+
+.flag-section-head {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--hud-faint, #5e6066); margin-top: 16px; padding-bottom: 2px;
+}
+
+/* allow the Experiments modal to grow taller so all sections are visible without scrolling */
+._KcyUW1 { max-height: min(90vh, 700px) !important; }
