@@ -9,6 +9,7 @@ import { useBottomSheet } from '@/hooks/useBottomSheet';
 import {
   FireIcon,
   PersonIcon,
+  ClearIcon,
   StopCircleIcon,
   ChevIcon,
 } from '@/lib/constants/icons';
@@ -84,42 +85,53 @@ export function MobileControlsSheet({
 
         <div className="mobile-sheet-body" aria-hidden={collapsed}>
           <div className="mobile-sheet-primary">
-            <AlertButton
-              kind="danger"
-              armed={alert === 'fire'}
-              Icon={FireIcon}
-              title="Fire Emergency"
-              desc="Double-flash red · evacuate"
-              onClick={onFire}
-            />
-            <AlertButton
-              kind="alert"
-              armed={alert === 'personal'}
-              Icon={PersonIcon}
-              title="Personal Alert"
-              desc="Purple pulse · discreet assist"
-              onClick={onPersonal}
-            />
+            <div className="alert-group">
+              <AlertButton
+                kind="danger"
+                armed={alert === 'fire'}
+                disabled={alert === 'personal'}
+                Icon={FireIcon}
+                title="Fire Emergency"
+                desc="Double-flash red · evacuate"
+                onClick={onFire}
+              />
+              <AlertButton
+                kind="clear"
+                disabled={alert !== 'fire'}
+                Icon={alert === 'fire' ? StopCircleIcon : ClearIcon}
+                title="Clear Fire Emergency"
+                desc={
+                  alert === 'fire'
+                    ? 'Tap to stand down the wearable'
+                    : 'No active fire emergency'
+                }
+                onClick={onClearFire}
+              />
+            </div>
+            <div className="alert-group">
+              <AlertButton
+                kind="alert"
+                armed={alert === 'personal'}
+                disabled={alert === 'fire'}
+                Icon={PersonIcon}
+                title="Personal Alert"
+                desc="Purple pulse · discreet assist"
+                onClick={onPersonal}
+              />
+              <AlertButton
+                kind="clear"
+                disabled={alert !== 'personal'}
+                Icon={alert === 'personal' ? StopCircleIcon : ClearIcon}
+                title="Clear Personal Alert"
+                desc={
+                  alert === 'personal'
+                    ? 'Tap to stand down the wearable'
+                    : 'No active personal alert'
+                }
+                onClick={onClearPersonal}
+              />
+            </div>
           </div>
-
-          {alert === 'fire' && (
-            <AlertButton
-              kind="clear"
-              Icon={StopCircleIcon}
-              title="Clear Fire Emergency"
-              desc="Tap to stand down the wearable"
-              onClick={onClearFire}
-            />
-          )}
-          {alert === 'personal' && (
-            <AlertButton
-              kind="clear"
-              Icon={StopCircleIcon}
-              title="Clear Personal Alert"
-              desc="Tap to stand down the wearable"
-              onClick={onClearPersonal}
-            />
-          )}
 
           <button
             type="button"

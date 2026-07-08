@@ -26,46 +26,52 @@ export function EmergencyControls({
   return (
     <Panel eyebrow="Emergency Controls">
       <div className="action-stack">
-        <AlertButton
-          kind="alert"
-          armed={alert === 'personal'}
-          Icon={PersonIcon}
-          title="Simulate Personal Alert"
-          desc="Pulsing purple · haptics · buzzer"
-          onClick={onPersonal}
-        />
-        <AlertButton
-          kind="clear"
-          disabled={alert !== 'personal'}
-          Icon={alert === 'personal' ? StopCircleIcon : ClearIcon}
-          title="Clear Personal Alert"
-          desc={
-            alert === 'personal'
-              ? 'Tap to stand down the wearable'
-              : 'No active personal alert'
-          }
-          onClick={onClearPersonal}
-        />
-        <AlertButton
-          kind="danger"
-          armed={alert === 'fire'}
-          Icon={FireIcon}
-          title="Simulate Fire Emergency"
-          desc="Double-flash red · haptics · buzzer"
-          onClick={onFire}
-        />
-        <AlertButton
-          kind="clear"
-          disabled={alert !== 'fire'}
-          Icon={alert === 'fire' ? StopCircleIcon : ClearIcon}
-          title="Clear Fire Emergency"
-          desc={
-            alert === 'fire'
-              ? 'Tap to stand down the wearable'
-              : 'No active fire emergency'
-          }
-          onClick={onClearFire}
-        />
+        <div className="alert-group">
+          <AlertButton
+            kind="danger"
+            armed={alert === 'fire'}
+            disabled={alert === 'personal'}
+            Icon={FireIcon}
+            title="Simulate Fire Emergency"
+            desc="Double-flash red · haptics · buzzer"
+            onClick={onFire}
+          />
+          <AlertButton
+            kind="clear"
+            disabled={alert !== 'fire'}
+            Icon={alert === 'fire' ? StopCircleIcon : ClearIcon}
+            title="Clear Fire Emergency"
+            desc={
+              alert === 'fire'
+                ? 'Tap to stand down the wearable'
+                : 'No active fire emergency'
+            }
+            onClick={onClearFire}
+          />
+        </div>
+        <div className="alert-group">
+          <AlertButton
+            kind="alert"
+            armed={alert === 'personal'}
+            disabled={alert === 'fire'}
+            Icon={PersonIcon}
+            title="Simulate Personal Alert"
+            desc="Pulsing purple · haptics · buzzer"
+            onClick={onPersonal}
+          />
+          <AlertButton
+            kind="clear"
+            disabled={alert !== 'personal'}
+            Icon={alert === 'personal' ? StopCircleIcon : ClearIcon}
+            title="Clear Personal Alert"
+            desc={
+              alert === 'personal'
+                ? 'Tap to stand down the wearable'
+                : 'No active personal alert'
+            }
+            onClick={onClearPersonal}
+          />
+        </div>
       </div>
     </Panel>
   );

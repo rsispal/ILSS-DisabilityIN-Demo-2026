@@ -33,6 +33,7 @@
 
 /* big emergency action buttons */
 .action-stack { display: flex; flex-direction: column; gap: 12px; }
+.alert-group { display: flex; flex-direction: column; gap: 8px; }
 .alert-btn {
   position: relative;
   display: flex; align-items: center; gap: 14px;

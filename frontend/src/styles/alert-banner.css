@@ -1,0 +1,112 @@
+/* ============================================================
+   Alert banner
+   ============================================================ */
+
+.alert-banner {
+  position: relative;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 13px 24px;
+  color: #fff;
+  animation: edgePulse 1.6s ease-in-out infinite;
+}
+
+.alert-banner.fire {
+  --alert-rgb: 255, 49, 49;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--alert-rgb), 0.32),
+    rgba(var(--alert-rgb), 0.12) 60%,
+    rgba(var(--alert-rgb), 0.04)
+  );
+  border-bottom: 1px solid rgba(var(--alert-rgb), 0.6);
+}
+
+.alert-banner.personal {
+  --alert-rgb: 178, 84, 255;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--alert-rgb), 0.32),
+    rgba(var(--alert-rgb), 0.12) 60%,
+    rgba(var(--alert-rgb), 0.04)
+  );
+  border-bottom: 1px solid rgba(var(--alert-rgb), 0.6);
+}
+
+.alert-banner-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.alert-banner-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: rgba(var(--alert-rgb), 0.25);
+  color: rgb(var(--alert-rgb));
+}
+
+.alert-banner-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.alert-banner-title {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-banner-badge {
+  flex: none;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  color: rgb(var(--alert-rgb));
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.alert-banner-desc {
+  margin: 0;
+  padding-left: 42px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* Mobile: stack title + description as distinct rows */
+@media (max-width: 900px) {
+  .alert-banner {
+    gap: 8px;
+    padding: 12px 16px 14px;
+  }
+
+  .alert-banner-head {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .alert-banner-title {
+    font-size: 15px;
+    flex: 1 1 auto;
+  }
+
+  .alert-banner-badge {
+    margin-left: auto;
+  }
+
+  .alert-banner-desc {
+    padding-left: 0;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}

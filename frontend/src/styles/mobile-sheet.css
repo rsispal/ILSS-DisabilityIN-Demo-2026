@@ -96,7 +96,13 @@
 .mobile-sheet-primary {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+}
+
+.mobile-sheet-primary .alert-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .mobile-sheet-primary .alert-btn {
@@ -164,7 +170,7 @@
    ============================================================ */
 
 .app--mobile {
-  --sheet-peek: 268px;
+  --sheet-peek: 380px;
 }
 
 .app--mobile .stage {

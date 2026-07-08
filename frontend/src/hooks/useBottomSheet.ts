@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 export type SheetSnap = 'collapsed' | 'open' | 'expanded';
 
 const COLLAPSED_H = 56;
-const OPEN_H = 268;
+const OPEN_H = 380;
 
 function expandedHeight() {
   return Math.min(Math.round(window.innerHeight * 0.84), 720);
