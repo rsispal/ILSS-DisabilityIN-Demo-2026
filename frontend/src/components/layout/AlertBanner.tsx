@@ -25,7 +25,7 @@ export function AlertBanner({ level }: AlertBannerProps) {
   };
 
   return (
-    <div style={style}>
+    <div className="alert-banner" style={style}>
       <span
         style={{
           width: 30,

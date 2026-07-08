@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { AlertBanner } from '@/components/layout/AlertBanner';
@@ -8,16 +8,22 @@ import { AdvancedLedPanel } from '@/components/controls/AdvancedLedPanel';
 import { AdvancedHapticsPanel } from '@/components/controls/AdvancedHapticsPanel';
 import { AdvancedBuzzerPanel } from '@/components/controls/AdvancedBuzzerPanel';
 import { Lanyard } from '@/components/lanyard/Lanyard';
+import { MobileControlsSheet } from '@/components/mobile/MobileControlsSheet';
 import { ExperimentsFab } from '@/components/experiments/ExperimentsFab';
 import { ExperimentsModal } from '@/components/experiments/ExperimentsModal';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useSimulatorState } from '@/hooks/useSimulatorState';
 import { useAudioOutput } from '@/hooks/useAudioOutput';
+import { useDeviceHaptics } from '@/hooks/useDeviceHaptics';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useLanyardScale } from '@/hooks/useLanyardScale';
 import { COLORS } from '@/lib/constants/colors';
 import { BUZZER_DUR } from '@/lib/constants/patterns';
 import type { PressedButton } from '@/types/simulator';
 
 export function LanyardSimulatorPage() {
+  const isMobile = useIsMobile();
+  const sceneRef = useRef<HTMLDivElement>(null);
   const { flags, setFlag, muted, setMuted } = useFeatureFlags();
   const { st, setCh, firePreset, personalPreset, clearFire, clearPersonal } =
     useSimulatorState();
@@ -25,6 +31,8 @@ export function LanyardSimulatorPage() {
   const [expOpen, setExpOpen] = useState(false);
 
   useAudioOutput(st.buzzer, muted);
+  useDeviceHaptics(st.haptic);
+  useLanyardScale(sceneRef, isMobile);
 
   const press = (which: PressedButton, fn: () => void) => {
     fn();
@@ -36,9 +44,29 @@ export function LanyardSimulatorPage() {
   const ledOn = st.led !== 'off';
   const buzzerActive = st.buzzer !== 'silent' && st.buzzer !== 'off';
 
+  const lanyard = (
+    <Lanyard
+      ledRgb={ledRgb}
+      ledPattern={st.led}
+      ledOn={ledOn}
+      hapticPattern={st.haptic}
+      buzzerActive={buzzerActive}
+      buzzerDur={BUZZER_DUR[st.buzzer] || 1.4}
+      pressed={pressed}
+      swingEnabled={flags.mouseSwing}
+      onPressPersonal={() =>
+        press('personal', () => (st.alert === 'personal' ? clearPersonal() : personalPreset()))
+      }
+      onPressFire={() =>
+        press('fire', () => (st.alert === 'fire' ? clearFire() : firePreset()))
+      }
+    />
+  );
+
   return (
     <AppShell
       alert={st.alert}
+      sceneRef={sceneRef}
       header={<AppHeader />}
       banner={<AlertBanner level={st.alert} />}
       left={
@@ -53,27 +81,7 @@ export function LanyardSimulatorPage() {
           <DeviceTelemetry st={st} muted={muted} />
         </>
       }
-      center={
-        <Lanyard
-          ledRgb={ledRgb}
-          ledPattern={st.led}
-          ledOn={ledOn}
-          hapticPattern={st.haptic}
-          buzzerActive={buzzerActive}
-          buzzerDur={BUZZER_DUR[st.buzzer] || 1.4}
-          pressed={pressed}
-          swingEnabled={flags.mouseSwing}
-          onPressPersonal={() =>
-            press(
-              'personal',
-              () => (st.alert === 'personal' ? clearPersonal() : personalPreset()),
-            )
-          }
-          onPressFire={() =>
-            press('fire', () => (st.alert === 'fire' ? clearFire() : firePreset()))
-          }
-        />
-      }
+      center={lanyard}
       right={
         <>
           <AdvancedLedPanel st={st} onChange={setCh} />
@@ -85,6 +93,21 @@ export function LanyardSimulatorPage() {
             onMutedChange={setMuted}
           />
         </>
+      }
+      mobileSheet={
+        isMobile ? (
+          <MobileControlsSheet
+            alert={st.alert}
+            st={st}
+            muted={muted}
+            onFire={firePreset}
+            onPersonal={personalPreset}
+            onClearFire={clearFire}
+            onClearPersonal={clearPersonal}
+            onChange={setCh}
+            onMutedChange={setMuted}
+          />
+        ) : undefined
       }
       footer={
         <>

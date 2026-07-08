@@ -4,7 +4,7 @@
 .scene {
   position: relative;
   width: 340px; height: 500px;
-  transform: scale(1.15);
+  transform: scale(var(--lanyard-scale, 1.15));
   transform-origin: center center;
   display: flex; align-items: center; justify-content: center;
   perspective: 1400px;
