@@ -103,6 +103,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  position: relative;
+  z-index: 1;
 }
 
 /* Brand text (shared with legacy header tweaks) */
@@ -145,6 +147,8 @@
   cursor: pointer;
   font-family: inherit;
   color: inherit;
+  -webkit-appearance: none;
+  appearance: none;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -156,17 +160,20 @@
 .user-avatar-stack {
   position: relative;
   display: inline-flex;
+  flex: none;
 }
 
 .user-avatar-ble-dot {
   position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 9px;
-  height: 9px;
+  right: -2px;
+  bottom: -2px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  border: 2px solid rgba(var(--color-application-dark), 1);
-  box-sizing: content-box;
+  border: 1.5px solid rgba(var(--color-application-dark), 1);
+  box-sizing: border-box;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .user-avatar-ble-dot.on {
@@ -252,6 +259,17 @@
 
 /* Mobile header compaction */
 @media (max-width: 900px) {
+  .app-menu-bar {
+    height: auto;
+    min-height: 3.625rem;
+    padding: 0.5rem 1rem;
+    --mobile-header: 58px;
+  }
+
+  .app-menu-bar-spacer {
+    height: calc(3.625rem + 1rem);
+  }
+
   .app-menu-bar .brand-title {
     font-size: 13px;
   }
