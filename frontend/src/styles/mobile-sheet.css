@@ -6,8 +6,6 @@
 :root {
   --ios-sheet-dark: rgba(28, 28, 30, 0.74);
   --ios-sheet-blur: blur(40px) saturate(180%);
-  --ios-backdrop-dark: rgba(0, 0, 0, 0.52);
-  --ios-backdrop-blur: blur(20px) saturate(140%);
 }
 
 .mobile-sheet-backdrop {
@@ -17,9 +15,7 @@
   border: none;
   padding: 0;
   margin: 0;
-  background: var(--ios-backdrop-dark);
-  backdrop-filter: var(--ios-backdrop-blur);
-  -webkit-backdrop-filter: var(--ios-backdrop-blur);
+  background: rgba(0, 0, 0, 0.35);
   cursor: pointer;
   animation: sheetFadeIn 0.2s ease;
 }
@@ -51,10 +47,6 @@
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .mobile-sheet-backdrop {
-    background: rgba(0, 0, 0, 0.72);
-  }
-
   .mobile-sheet {
     background: rgba(28, 28, 30, 0.96);
   }
