@@ -262,7 +262,7 @@
   100% { transform: scale(2.1); opacity: 0; }
 }
 
-/* mobile first-load intro: LED starts off, then fades to green with 2 pulse rings */
+/* first-load intro: LED starts off, then fades to green with 2 pulse rings */
 .scene.intro-pulse .led-svg[data-pat="solid"] .led-stroke { animation: ledIntroIn 1s ease-out forwards; }
 .scene.intro-pulse .led-svg[data-pat="solid"] .led-bloom { animation: ledIntroBloom 1s ease-out forwards; }
 .scene.intro-pulse .scene-halo { animation: ledIntroHalo 1s ease-out forwards; }
