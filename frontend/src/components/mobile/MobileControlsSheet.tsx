@@ -12,6 +12,7 @@ import {
   ClearIcon,
   StopCircleIcon,
   ChevIcon,
+  CloseIcon,
 } from '@/lib/constants/icons';
 import type { AlertLevel, DeviceState } from '@/types/simulator';
 
@@ -76,6 +77,17 @@ export function MobileControlsSheet({
         className={`mobile-sheet${collapsed ? ' collapsed' : ''}${advancedOpen ? ' advanced' : ''}${dragging ? ' dragging' : ''}`}
         style={{ height }}
       >
+        {!collapsed && (
+          <button
+            type="button"
+            className="mobile-sheet-close"
+            aria-label="Close controls"
+            onClick={collapse}
+          >
+            <CloseIcon style={{ width: 16, height: 16 }} />
+          </button>
+        )}
+
         <div className="mobile-sheet-handle" {...handleProps}>
           <div className="mobile-sheet-grab" />
           {collapsed && (
