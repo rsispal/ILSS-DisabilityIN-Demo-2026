@@ -38,34 +38,39 @@
   touch-action: none;
 }
 
+.mobile-sheet-chrome {
+  position: relative;
+  flex: none;
+}
+
 .mobile-sheet-close {
   position: absolute;
-  top: -18px;
-  left: 50%;
+  top: 10px;
+  right: 14px;
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  margin-left: -18px;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border: 1px solid var(--panel-border-strong);
+  border: none;
   border-radius: 50%;
-  background: rgba(22, 23, 25, 0.96);
-  color: var(--hud-text);
+  background: rgba(118, 118, 128, 0.32);
+  color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
-  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.85);
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background 0.15s ease, transform 0.12s ease;
 }
 
 .mobile-sheet-close:hover {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(30, 31, 33, 0.98);
+  background: rgba(118, 118, 128, 0.48);
   color: #fff;
 }
 
 .mobile-sheet-close:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
+  background: rgba(118, 118, 128, 0.56);
 }
 
 .mobile-sheet.dragging {
@@ -89,8 +94,8 @@
 }
 
 .mobile-sheet:not(.collapsed) .mobile-sheet-handle {
-  min-height: 56px;
-  padding: 16px 20px 24px;
+  min-height: 52px;
+  padding: 14px 56px 22px;
   justify-content: center;
 }
 

@@ -77,21 +77,23 @@ export function MobileControlsSheet({
         className={`mobile-sheet${collapsed ? ' collapsed' : ''}${advancedOpen ? ' advanced' : ''}${dragging ? ' dragging' : ''}`}
         style={{ height }}
       >
-        {!collapsed && (
-          <button
-            type="button"
-            className="mobile-sheet-close"
-            aria-label="Close controls"
-            onClick={collapse}
-          >
-            <CloseIcon style={{ width: 16, height: 16 }} />
-          </button>
-        )}
+        <div className="mobile-sheet-chrome">
+          <div className="mobile-sheet-handle" {...handleProps}>
+            <div className="mobile-sheet-grab" />
+            {collapsed && (
+              <span className="mobile-sheet-handle-hint">Swipe up for controls</span>
+            )}
+          </div>
 
-        <div className="mobile-sheet-handle" {...handleProps}>
-          <div className="mobile-sheet-grab" />
-          {collapsed && (
-            <span className="mobile-sheet-handle-hint">Swipe up for controls</span>
+          {!collapsed && (
+            <button
+              type="button"
+              className="mobile-sheet-close"
+              aria-label="Close controls"
+              onClick={collapse}
+            >
+              <CloseIcon style={{ width: 14, height: 14 }} />
+            </button>
           )}
         </div>
 
