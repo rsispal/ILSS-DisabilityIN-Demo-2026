@@ -38,7 +38,7 @@ export function Lanyard({
   const { feedMomentum, clearMomentum } = useSwingPhysics(swingEnabled, swayRef);
 
   const displayLedPattern = introLedWait ? 'off' : ledPattern;
-  const displayLedOn = introLedWait ? false : ledOn;
+  const displayLedOn = introLedWait || introPulse ? false : ledOn;
 
   const sceneClasses = [
     'scene',
