@@ -1,0 +1,4 @@
+.DS_Store
+
+
+# TODO: Each sub-repo will have its own .gitignore file (pcb = kicad gitignore, firmware = esp-idf/embedded/c++ gitignore, frontend = react/vite gitignore)

@@ -1,0 +1,91 @@
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-Book.woff2) format('woff2'),
+    url(./HoneywellSansWeb-Book.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: italic;
+  font-weight: 300;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-BookItalic.woff2) format('woff2'),
+    url(./HoneywellSansWeb-BookItalic.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-Medium.woff2) format('woff2'),
+    url(./HoneywellSansWeb-Medium.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-MediumItalic.woff2) format('woff2'),
+    url(./HoneywellSansWeb-MediumItalic.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-Bold.woff2) format('woff2'),
+    url(./HoneywellSansWeb-Bold.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-BoldItalic.woff2) format('woff2'),
+    url(./HoneywellSansWeb-BoldItalic.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-Extrabold.woff2) format('woff2'),
+    url(./HoneywellSansWeb-Extrabold.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: italic;
+  font-weight: 800;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-ExtraboldItalic.woff2)
+      format('woff2'),
+    url(./HoneywellSansWeb-Extrabold.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-Black.woff2) format('woff2'),
+    url(./HoneywellSansWeb-Black.woff) format('woff');
+}
+@font-face{
+  font-family: 'Honeywell Sans Web Common';
+  font-style: italic;
+  font-weight: 900;
+  font-display: swap;
+  src:
+    url(./HoneywellSansWeb-BlackItalic.woff2) format('woff2'),
+    url(./HoneywellSansWeb-BlackItalic.woff) format('woff');
+}
