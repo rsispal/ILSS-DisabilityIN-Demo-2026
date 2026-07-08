@@ -88,6 +88,12 @@
   user-select: none;
 }
 
+.mobile-sheet:not(.collapsed) .mobile-sheet-handle {
+  min-height: 56px;
+  padding: 16px 20px 24px;
+  justify-content: center;
+}
+
 .mobile-sheet-handle:active {
   cursor: grabbing;
 }
@@ -115,6 +121,14 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.mobile-sheet:not(.collapsed) .mobile-sheet-body {
+  padding-top: 8px;
+}
+
+.mobile-sheet:not(.collapsed) .mobile-sheet-primary {
+  padding-top: 4px;
 }
 
 .mobile-sheet.collapsed .mobile-sheet-body {
