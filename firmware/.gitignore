@@ -1,0 +1,20 @@
+# editors
+*.swp
+*~
+
+# build
+/build*/
+
+.DS_Store
+
+
+archive/
+
+
+src/features/azure-iot/certs
+devicecert
+out
+managed_components
+modules 
+bootloader
+.cache

@@ -1,0 +1,11 @@
+menu "ILSS Lanyard - Debug"
+
+config ILSS_DEBUG_BOOT_INTO_FEATURE_DEVELOPMENT_MODE
+	string "Boot into feature development mode"
+	default "n"
+	help
+	  Boot into feature development mode.
+	  When enabled, the device will boot into feature development mode.
+	  This is useful for testing experimental features.
+
+endmenu

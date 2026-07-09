@@ -1,0 +1,31 @@
+#pragma once
+
+// DigiCert Global Root G2 Certificate
+// Required for Azure IoT Hub TLS connections
+// Downloaded from: https://cacerts.digicert.com/DigiCertGlobalRootG2.crt.pem
+// Valid until: 2038-01-15
+
+const char AZURE_CA_CERT[] =
+"-----BEGIN CERTIFICATE-----\n"
+"MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh\n"
+"MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3\n"
+"d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH\n"
+"MjAeFw0xMzA4MDExMjAwMDBaFw0zODAxMTUxMjAwMDBaMGExCzAJBgNVBAYTAlVT\n"
+"MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j\n"
+"b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IEcyMIIBIjANBgkqhkiG\n"
+"9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzfNNNx7a8myaJCtSnX/RrohCgiN9RlUyfuI\n"
+"2/Ou8jqJkTx65qsGGmvPrC3oXgkkRLpimn7Wo6h+4FR1IAWsULecYxpsMNzaHxmx\n"
+"1x7e/dfgy5SDN67sH0NO3Xss0r0upS/kqbitOtSZpLYl6ZtrAGCSYP9PIUkY92eQ\n"
+"q2EGnI/yuum06ZIya7XzV+hdG82MHauVBJVJ8zUtluNJbd134/tJS7SsVQepj5Wz\n"
+"tCO7TG1F8PapspUwtP1MVYwnSlcUfIKdzXOS0xZKBgyMUNGPHgm+F6HmIcr9g+UQ\n"
+"vIOlCsRnKPZzFBQ9RnbDhxSJITRNrw9FDKZJobq7nMWxM4MphQIDAQABo0IwQDAP\n"
+"BgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNVHQ4EFgQUTiJUIBiV\n"
+"7uN5vUr47TcdKqX6ahAwDQYJKoZIhvcNAQELBQADggEBAGBm+KUrv2j5HbUu6Yg4\n"
+"v7IHo5ol0t1om2YB5U8i4I/gxevTVz9ZRqgs3X78x3edGqrD2Pd3Kqh8Wf5/7oXQ\n"
+"UfhYDYFonwGMwnff5yQ+7g3zDvlSe8Yq+Jv4T82b5qTrk/IAs4pMG4qRDj7bjK5\n"
+"oHJ6IC5HRQpluBC1Jfpa6o1Y1FvYfpyq/kvWrvhN3ZFCqY5uHg06i9sT4QarxaV\n"
+"9BmKtWUcZVyFv4UXxK6HiRVpSdXeqaXpY5u3zi5owdYdQXrY8wejVeKeOf1bGEv\n"
+"NO5MPFlqcrjSVph7Ppj/Z8gDX6tlJrSS2s9n7xuy1biB/yf2KZL98R3lwHb4W3es\n"
+"lCpdP+KmHPNvPMmcyM0xP6stH/w8Q1WCrMaXuajXp2Kc="
+"-----END CERTIFICATE-----\n"
+;

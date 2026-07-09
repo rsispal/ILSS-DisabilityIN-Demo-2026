@@ -1,0 +1,131 @@
+menu "ILSS Lanyard - Preferences"
+
+config ILSS_PREFERENCES_EXPERIMENTAL_FEATURES_ENABLED
+	bool "Enable experimental features"
+	default n
+	help
+	  Enable access to experimental features that are still in development.
+	  When enabled, additional configuration options for experimental features
+	  will become available. Use with caution as these features may be unstable.
+
+config ILSS_PREFERENCES_PERSONAL_ALERT_BUTTONS_ENABLED
+	bool "Enable Personal Alert buttons"
+	default y
+	help
+	  Enable or disable the Personal Alert buttons functionality.
+	  When enabled, the device will respond to Personal Alert button presses.
+
+config ILSS_PREFERENCES_LED_INDICATORS_ENABLED
+	bool "Enable LED indicators"
+	default y
+	help
+	  Enable or disable the LED indicators on the device.
+	  When enabled, LEDs will provide visual feedback for various states and events.
+
+config ILSS_PREFERENCES_AUDIBLE_INDICATORS_ENABLED
+	bool "Enable audible indicators"
+	default y
+	help
+	  Enable or disable the audible indicators (buzzer/speaker).
+	  When enabled, the device will provide audio feedback for alerts and events.
+
+config ILSS_PREFERENCES_HAPTICS_ENABLED
+	bool "Enable haptic feedback"
+	default y
+	help
+	  Enable or disable haptic feedback (vibration).
+	  When enabled, the device will provide tactile feedback for alerts and events.
+
+config ILSS_PREFERENCES_HONEYWELL_BEACON_SCANNING_ENABLED
+	bool "Enable Honeywell beacon scanning"
+	default y
+	help
+	  Enable or disable scanning for Honeywell-specific beacons.
+	  When enabled, the device will actively scan for and process Honeywell beacon signals.
+
+config ILSS_PREFERENCES_THIRD_PARTY_BEACON_SCANNING_ENABLED
+	bool "Enable third party beacon scanning"
+	default n
+	depends on ILSS_PREFERENCES_EXPERIMENTAL_FEATURES_ENABLED
+	help
+	  Enable or disable scanning for third-party beacons.
+	  This is an experimental feature. When enabled, the device will scan for
+	  non-Honeywell beacon signals.
+	  This option is only available when experimental features are enabled.
+
+config ILSS_PREFERENCES_INACTIVITY_ALERT_ENABLED
+	bool "Enable inactivity alert"
+	default n
+	depends on ILSS_PREFERENCES_EXPERIMENTAL_FEATURES_ENABLED
+	help
+	  Enable or disable inactivity alert functionality.
+	  This is an experimental feature. When enabled, the device will alert
+	  users after a period of inactivity.
+	  This option is only available when experimental features are enabled.
+
+config ILSS_PREFERENCES_INCOMING_FIRE_ALARM_EVENTS_ENABLED
+	bool "Enable incoming fire alarm events alert"
+	default y
+	help
+	  Enable or disable alerts for incoming fire alarm events.
+	  When enabled, the device will provide alerts when fire alarm events are received.
+
+config ILSS_PREFERENCES_WIFI_ENABLED
+	bool "Enable Wi-Fi functionality"
+	default y
+	help
+	  Enable or disable Wi-Fi connectivity.
+	  When enabled, the device will be able to connect to Wi-Fi networks for
+	  communication and updates.
+
+config ILSS_PREFERENCES_NFC_SESSION_SHARING_ENABLED
+	bool "Enable NFC session sharing"
+	default y
+	help
+	  Enable or disable NFC session sharing functionality.
+	  When enabled, the device can share session information via NFC.
+
+config ILSS_PREFERENCES_QUIESCENT_BEACON_SCAN_MODE_SCAN_INTERVAL_MS
+	int "Quiescent mode beacon scanning interval (milliseconds)"
+	default 60000
+	range 1000 300000
+	help
+	  The interval between beacon scans when in quiescent mode.
+	  Default is 60 seconds (60000ms). Range is 1-300 seconds.
+
+config ILSS_PREFERENCES_FAST_BEACON_SCAN_MODE_SCAN_INTERVAL_MS
+	int "Fast scan mode beacon scanning interval (milliseconds)"
+	default 20000
+	range 1000 60000
+	help
+	  The interval between beacon scans when in fast scan mode.
+	  Default is 20 seconds (20000ms). Range is 1-60 seconds.
+
+config ILSS_PREFERENCES_PERSONAL_ALERT_BUTTON_TRIGGER_DELAY_MS
+	int "Personal Alert Button Trigger Delay (milliseconds)"
+	default 5000
+	range 1000 10000
+	help
+	  The delay before triggering a Personal Alert after button press.
+	  Default is 5 seconds (5000ms). Range is 1-10 seconds.
+	  This delay allows for accidental button presses to be cancelled.
+
+config ILSS_PREFERENCES_BEACON_SCAN_WINDOW_MS
+	int "Beacon scan window duration (milliseconds)"
+	default 3000
+	range 1000 10000
+	help
+	  The duration of each beacon scan window.
+	  Default is 3 seconds (3000ms). Range is 1-10 seconds.
+	  Shorter scan windows reduce power consumption but may miss some beacons.
+
+config ILSS_PREFERENCES_BEACON_RSSI_CHANGE_THRESHOLD_DB
+	int "Beacon RSSI change threshold for logging (dB)"
+	default 5
+	range 1 20
+	help
+	  The minimum RSSI change (in dB) required to log beacon updates.
+	  Default is 5dB. Range is 1-20dB.
+	  Higher values reduce logging noise from minor signal fluctuations.
+
+endmenu

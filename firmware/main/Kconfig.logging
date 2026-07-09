@@ -1,0 +1,101 @@
+# Custom logging configuration for ILSS Lanyard project
+menu "ILSS Lanyard - Logging"
+
+config ILSS_LOG_LEVEL
+    int "Overall log level"
+    default 3
+    range 0 4
+    help
+      Overall log level for the ILSS Lanyard application
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+
+config ILSS_LOWLEVEL_LOG_LEVEL
+    int "Lowlevel log level"
+    default 3
+    range 0 4
+    help
+      Overall log level for the ILSS Lanyard application low level
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+
+config ILSS_NETWORK_LOG_LEVEL
+    int "Network client log level"
+    default 3
+    range 0 4
+    help
+      Log level for Network client
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed network operation logging, 3 for normal operation
+      
+config ILSS_WIFI_LOG_LEVEL
+    int "WiFi driver log level"
+    default 3
+    range 0 4
+    help
+      Log level for WiFi driver
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed WiFi operation logging, 3 for normal operation
+
+config ILSS_I2C_LOG_LEVEL
+    int "I2C driver log level"
+    default 2
+    range 0 4
+    help
+      Log level for I2C driver (low-level I2C transactions)
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed I2C transaction logging, 2-3 for errors/warnings only
+
+config ILSS_HAPTICS_LOG_LEVEL
+    int "Haptics driver log level"
+    default 3
+    range 0 4
+    help
+      Log level for DRV2605 haptics driver
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed haptics operation logging, 3 for normal operation
+
+config ILSS_TIMER_LOG_LEVEL
+    int "Timer driver log level"
+    default 3
+    range 0 4
+    help
+      Log level for Timer driver
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed timer operation logging, 3 for normal operation
+
+config ILSS_BLUETOOTH_LOG_LEVEL
+    int "Bluetooth driver log level"
+    default 3
+    range 0 4
+    help
+      Log level for Bluetooth driver
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed bluetooth operation logging, 3 for normal operation
+    
+
+config ILSS_BUZZER_LOG_LEVEL
+    int "Buzzer driver log level"
+    default 3
+    range 0 4
+    help
+      Log level for Buzzer driver
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed buzzer operation logging, 3 for normal operation
+
+config ILSS_SIDE_BUTTONS_LOG_LEVEL
+    int "Side buttons log level"
+    default 3
+    range 0 4
+    help
+      Log level for Side buttons
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed side buttons operation logging, 3 for normal operation
+
+config ILSS_RGB_LED_LOG_LEVEL
+    int "RGB LED log level"
+    default 3
+    range 0 4
+    help
+      Log level for RGB LED
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+      Set to 4 for detailed RGB LED operation logging, 3 for normal operation
+endmenu
