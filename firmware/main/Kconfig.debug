@@ -1,11 +1,9 @@
 menu "ILSS Lanyard - Debug"
 
 config ILSS_DEBUG_BOOT_INTO_FEATURE_DEVELOPMENT_MODE
-	string "Boot into feature development mode"
+	string "Boot into feature development mode (unused in twin build)"
 	default "n"
 	help
-	  Boot into feature development mode.
-	  When enabled, the device will boot into feature development mode.
-	  This is useful for testing experimental features.
+	  Retained for sdkconfig compatibility. Digital twin always boots the twin app.
 
 endmenu

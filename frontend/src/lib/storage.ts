@@ -6,6 +6,7 @@ export const APP_PROFILE_KEY = 'ilss-profile';
 export const FLAG_DEFAULTS: FeatureFlags = {
   mouseSwing: false,
   muteByDefault: true,
+  deviceLogs: false,
 };
 
 export const PROFILE_DEFAULTS: UserProfile = {

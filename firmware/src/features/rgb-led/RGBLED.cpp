@@ -182,9 +182,11 @@ void RGBLED::clearStrip()
 
 void RGBLED::updatePulseEffect(uint32_t now)
 {
-    // Smooth sine wave pulse - 2 second cycle
-    float phase = (now % 2000) / 2000.0f * 2 * M_PI;
+    // Smooth breathe — matches web personal alert (1.5s cycle, ease-in-out)
+    float phase = (now % 1500) / 1500.0f * 2 * M_PI;
     float intensity = (sinf(phase) + 1.0f) / 2.0f;
+    // Web opacity range ~0.28–1.0
+    intensity = 0.28f + intensity * 0.72f;
     
     uint8_t r, g, b;
     getColorWithBrightness(current_effect.color, current_effect.brightness, intensity, &r, &g, &b);
@@ -214,8 +216,10 @@ void RGBLED::updateBlinkAlternateEffect(uint32_t now)
 
 void RGBLED::updateFlashEffect(uint32_t now, uint32_t period)
 {
-    // Quick flash (100ms on) every period
-    bool on = (now % period) < 100;
+    // Web advanced flash: 1.5s period, ~18% on (270ms)
+    const uint32_t p = (period == 1000) ? 1500 : period;
+    const uint32_t on_ms = (p * 18) / 100;
+    bool on = (now % p) < on_ms;
     
     uint8_t r, g, b;
     getColorWithBrightness(current_effect.color, current_effect.brightness, on ? 1.0f : 0.0f, &r, &g, &b);
@@ -263,9 +267,10 @@ void RGBLED::updateContinuousEffect()
 
 void RGBLED::updateDoubleFlashEffect(uint32_t now)
 {
-    // Double flash pattern - two 100ms flashes with 100ms gap, then 1.2s off
-    uint32_t cycle = now % 1500;
-    bool on = (cycle < 100) || (cycle >= 200 && cycle < 300);
+    // Match web fire double-flash: 1100ms cycle
+    // ON 0–88ms, OFF 99–198ms, ON 209–297ms, OFF rest
+    uint32_t cycle = now % 1100;
+    bool on = (cycle < 88) || (cycle >= 209 && cycle < 297);
     
     uint8_t r, g, b;
     getColorWithBrightness(current_effect.color, current_effect.brightness, on ? 1.0f : 0.0f, &r, &g, &b);
@@ -401,26 +406,36 @@ void RGBLED::getColorWithBrightness(LedColor color, Brightness brightness, float
 
     // Apply color
     switch (color) {
+        // Colors matched to web COLORS palette
         case LedColor::RED:
             *r = static_cast<uint8_t>(255 * intensity);
+            *g = static_cast<uint8_t>(49 * intensity);
+            *b = static_cast<uint8_t>(49 * intensity);
             break;
         case LedColor::GREEN:
-            *g = static_cast<uint8_t>(255 * intensity);
+            *r = static_cast<uint8_t>(43 * intensity);
+            *g = static_cast<uint8_t>(226 * intensity);
+            *b = static_cast<uint8_t>(122 * intensity);
             break;
         case LedColor::BLUE:
+            *r = static_cast<uint8_t>(56 * intensity);
+            *g = static_cast<uint8_t>(132 * intensity);
             *b = static_cast<uint8_t>(255 * intensity);
             break;
         case LedColor::PURPLE:
-            *r = static_cast<uint8_t>(255 * intensity);
+            *r = static_cast<uint8_t>(178 * intensity);
+            *g = static_cast<uint8_t>(84 * intensity);
             *b = static_cast<uint8_t>(255 * intensity);
             break;
         case LedColor::YELLOW:
             *r = static_cast<uint8_t>(255 * intensity);
-            *g = static_cast<uint8_t>(255 * intensity);
+            *g = static_cast<uint8_t>(210 * intensity);
+            *b = static_cast<uint8_t>(40 * intensity);
             break;
-        case LedColor::CYAN:
-            *g = static_cast<uint8_t>(255 * intensity);
-            *b = static_cast<uint8_t>(255 * intensity);
+        case LedColor::CYAN:  // teal on web
+            *r = static_cast<uint8_t>(22 * intensity);
+            *g = static_cast<uint8_t>(224 * intensity);
+            *b = static_cast<uint8_t>(208 * intensity);
             break;
         case LedColor::WHITE:
             *r = static_cast<uint8_t>(255 * intensity);
@@ -429,7 +444,8 @@ void RGBLED::getColorWithBrightness(LedColor color, Brightness brightness, float
             break;
         case LedColor::ORANGE:
             *r = static_cast<uint8_t>(255 * intensity);
-            *g = static_cast<uint8_t>(165 * intensity);
+            *g = static_cast<uint8_t>(138 * intensity);
+            *b = static_cast<uint8_t>(36 * intensity);
             break;
     }
 }

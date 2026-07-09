@@ -1,49 +1,53 @@
-# ILSS Lanyard
+# ILSS Lanyard Firmware (BLE Digital Twin)
 
-## Project Description
->
->
->
+ESP-IDF firmware for the ILSS smart lanyard demo. The device acts as a **BLE peripheral digital twin** of the web simulator: fire emergency, personal alert, and advanced LED/haptic/buzzer indications stay synchronized over a custom GATT service and packed packet protocol.
 
-## Configuration
+## Target
 
-The ILSS Lanyard application provides various configuration options through Kconfig. These can be configured through the Zephyr configuration system.
+- MCU: ESP32-S3 (Seeed XIAO ESP32-S3 breakout by default — see `src/application/Hardware.h`)
+- Framework: ESP-IDF 5.3+
+- BLE: NimBLE peripheral (GATT metadata + twin control + log notify)
 
-### Configuration Properties
+## Build & flash
 
-| Configuration Option | Type | Default | Description | Status |
-|---------------------|------|---------|-------------|---------|
-| `ILSS_PREFERENCES_PERSONAL_ALERT_BUTTONS_ENABLED` | bool | y | Enable Personal Alert buttons functionality | ✅ Current |
-| `ILSS_PREFERENCES_LED_INDICATORS_ENABLED` | bool | y | Enable LED indicators for visual feedback | ✅ Current |
-| `ILSS_PREFERENCES_AUDIBLE_INDICATORS_ENABLED` | bool | y | Enable audible indicators (buzzer/speaker) | ✅ Current |
-| `ILSS_PREFERENCES_HAPTICS_ENABLED` | bool | y | Enable haptic feedback (vibration) | ✅ Current |
-| `ILSS_PREFERENCES_HONEYWELL_BEACON_SCANNING_ENABLED` | bool | y | Enable scanning for Honeywell-specific beacons | ✅ Current |
-| `ILSS_PREFERENCES_INCOMING_FIRE_ALARM_EVENTS_ENABLED` | bool | y | Enable alerts for incoming fire alarm events | ✅ Current |
-| `ILSS_PREFERENCES_WIFI_ENABLED` | bool | y | Enable Wi-Fi connectivity | ✅ Current |
-| `ILSS_PREFERENCES_NFC_SESSION_SHARING_ENABLED` | bool | y | Enable NFC session sharing functionality | ✅ Current |
-| `ILSS_PREFERENCES_QUIESCENT_MODE_SCAN_INTERVAL_MS` | int | 60000 | Quiescent mode beacon scanning interval (1-300s) | ✅ Current |
-| `ILSS_PREFERENCES_FAST_SCAN_MODE_SCAN_INTERVAL_MS` | int | 20000 | Fast scan mode beacon scanning interval (1-60s) | ✅ Current |
-| `ILSS_PREFERENCES_PERSONAL_ALERT_BUTTON_TRIGGER_DELAY_MS` | int | 5000 | Personal Alert button trigger delay (1-10s) | ✅ Current |
+```bash
+cd firmware
+idf.py set-target esp32s3
+idf.py build
+idf.py -p /dev/ttyACM0 flash monitor
+```
 
-### Experimental Features
+Factory identity / secret provisioning:
 
-| Configuration Option | Type | Default | Description | Status |
-|---------------------|------|---------|-------------|---------|
-| `ILSS_PREFERENCES_EXPERIMENTAL_FEATURES_ENABLED` | bool | n | Master switch for experimental features | 🔬 Experimental |
-| `ILSS_PREFERENCES_THIRD_PARTY_BEACON_SCANNING_ENABLED` | bool | n | Enable scanning for third-party beacons | 🔬 Experimental |
-| `ILSS_PREFERENCES_INACTIVITY_ALERT_ENABLED` | bool | n | Enable inactivity alert functionality | 🔬 Experimental |
+```bash
+python tools/provision_lanyard.py --port /dev/ttyACM0 --serial ILSS-LY-0001
+```
 
-### Usage
+## Boot flow
 
-To enable experimental features, set `ILSS_PREFERENCES_EXPERIMENTAL_FEATURES_ENABLED=y` in your configuration. This will make the experimental feature options available in the configuration menu.
+1. Init NVS, USB serial logger, LED boot cue
+2. **5 second USB CLI window** — press any key for configure / hardware test / status / NVS reset
+3. Start `DigitalTwinApplication` — advertise BLE, run indication controller, sync with web
 
-### Configuration via Menuconfig
+## Docs
 
-Run `west build -t menuconfig` to access the interactive configuration menu where you can modify these settings.
+- [docs/BLE_GATT.md](docs/BLE_GATT.md) — GATT services & characteristics
+- [docs/PACKET_PROTOCOL.md](docs/PACKET_PROTOCOL.md) — packed bidirectional frames
+- [docs/PAIRING.md](docs/PAIRING.md) — pairing, secrets, encryption
 
+## Layout
 
-## Building firmware
-Build command:
-```sh
-west build -b thingy53/nrf5340/cpuapp -- -Dilss_lanyard_SHIELD=nrf7002eb
+```
+firmware/
+  main/                 ESP-IDF component + Kconfig
+  src/
+    main.cpp
+    application/        DigitalTwinApplication, Hardware.h, IndicationController
+    features/           rgb-led, buzzer, side-buttons, ble-twin, usb (slim CLI)
+    lowlevel/           i2c, buzzer PWM, haptics, nvs, usb, bluetooth peripheral
+    protocol/           PacketCodec + TwinState
+    state/              NVS-backed device state
+    utils/              Logger (USB serial + optional BLE log fan-out)
+  tools/                provision_lanyard.py
+  docs/
 ```

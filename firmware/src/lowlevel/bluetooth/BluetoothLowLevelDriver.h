@@ -5,105 +5,82 @@
 #include <vector>
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
-#include "esp_timer.h"
+#include "freertos/queue.h"
 
-// Forward declarations
 class Logger;
-class BLEBeacon;
 
 /**
- * BluetoothLowLevelDriver - Low-level BLE driver using NimBLE
- * 
- * Provides BLE scanning functionality for beacon detection.
- * Uses ESP32's NimBLE stack (lighter than Bluedroid, BLE-only).
+ * BluetoothLowLevelDriver - NimBLE peripheral for digital twin GATT.
  */
 class BluetoothLowLevelDriver {
     const char* TAG = "BluetoothLowLevel";
 
 public:
-    // Callback types for beacon discovery
-    using BeaconDiscoveredCallback = std::function<void(const BLEBeacon &beacon)>;
-    using ScanStartedCallback = std::function<void()>;
-    using ScanStoppedCallback = std::function<void()>;
-    using ScanErrorCallback = std::function<void(int error)>;
+    using WriteCallback = std::function<void(uint16_t attr_handle, const uint8_t* data, size_t len)>;
+    using ConnCallback = std::function<void(bool connected, uint16_t conn_handle)>;
 
     BluetoothLowLevelDriver(Logger* logger);
     ~BluetoothLowLevelDriver();
 
-    // Initialize BLE subsystem (lazy - only initializes on first scan)
     bool begin();
-    
-    // Initialize BT controller early (for coexistence with WiFi)
-    // This should be called before WiFi starts
     bool initController();
-    
     void stop();
 
-    // Start BLE scanning
-    // scanInterval: Scan interval in 0.625ms units (0 = use default 100ms)
-    // scanWindow: Scan window in 0.625ms units (0 = use default 50ms)
-    bool startScanning(uint16_t scanInterval = 0, uint16_t scanWindow = 0);
+    bool startAdvertising(const char* name);
+    bool stopAdvertising();
+    bool isConnected() const { return connected_; }
+    uint16_t connHandle() const { return conn_handle_; }
 
-    // Stop BLE scanning
-    bool stopScanning();
+    void setWriteCallback(WriteCallback cb) { on_write_ = std::move(cb); }
+    void setConnectionCallback(ConnCallback cb) { on_conn_ = std::move(cb); }
 
-    // Check if currently scanning
-    bool isScanning() const { return is_scanning_; }
-    
-    // Check if Bluetooth driver is ready (initialized)
-    bool isReady() const { return initialized_; }
+    /** Notify on a characteristic value handle. */
+    bool notify(uint16_t attr_handle, const uint8_t* data, size_t len);
 
-    // Callback registration
-    void setBeaconDiscoveredCallback(BeaconDiscoveredCallback callback);
-    void setScanStartedCallback(ScanStartedCallback callback);
-    void setScanStoppedCallback(ScanStoppedCallback callback);
-    void setScanErrorCallback(ScanErrorCallback callback);
+    /** Register GATT services (called once after begin). */
+    bool registerGattServices();
 
-    // Filter configuration
-    void addManufacturerFilter(uint16_t manufacturerId);
-    void clearManufacturerFilters();
+    // Exposed handles for BleTwin feature
+    uint16_t handle_cmd_ = 0;
+    uint16_t handle_event_ = 0;
+    uint16_t handle_status_ = 0;
+    uint16_t handle_pairing_ = 0;
+    uint16_t handle_log_ = 0;
+    uint16_t handle_serial_ = 0;
+    uint16_t handle_model_ = 0;
+    uint16_t handle_swver_ = 0;
+    uint16_t handle_brand_ = 0;
+    uint16_t handle_batt_ = 0;
+
+    bool log_notify_enabled_ = false;
+    bool event_notify_enabled_ = false;
+    bool status_notify_enabled_ = false;
+    bool pairing_notify_enabled_ = false;
+
+    // Metadata buffers (set by BleTwin before advertising)
+    char serial_[32] = "ILSS-LY-0000";
+    char model_[32] = "ILSS-Lanyard-Breakout";
+    char sw_version_[32] = "0.1.0";
+    uint8_t brand_ = 1;
+    uint8_t battery_ = 100;
+    uint8_t status_bytes_[6]{};
+
+    static BluetoothLowLevelDriver* instance() { return s_instance; }
 
 private:
     Logger* logger_;
-    bool initialized_;
-    bool hci_initialized_;  // Track if HCI has been initialized
-    bool is_scanning_;
-    
-    // Callbacks
-    BeaconDiscoveredCallback onBeaconDiscovered_;
-    ScanStartedCallback onScanStarted_;
-    ScanStoppedCallback onScanStopped_;
-    ScanErrorCallback onScanError_;
-    
-    // Manufacturer filters
-    std::vector<uint16_t> manufacturerFilters_;
-    
-    SemaphoreHandle_t sync_sem_;
-    
-    // Timer for explicit scan window control (stop scan after 5 seconds)
-    esp_timer_handle_t scan_window_timer_;
-    uint16_t current_scan_interval_ms_;  // Store interval for periodic restarts
+    bool initialized_ = false;
+    bool controller_ready_ = false;
+    bool connected_ = false;
+    uint16_t conn_handle_ = 0xFFFF;
+    WriteCallback on_write_;
+    ConnCallback on_conn_;
 
-    // NimBLE callbacks
-    static void onHostSync();
-    static int onGapEvent(struct ble_gap_event *event, void *arg);
-    static void hostTask(void *param);
-
-    // Helper to parse manufacturer data from advertisement
-    static bool parseManufacturerData(const uint8_t* adv_data, size_t adv_len,
-                                     uint16_t* manufacturer_id,
-                                     const uint8_t** manufacturer_data,
-                                     size_t* manufacturer_data_len);
-    
-    // Process advertisement data and trigger callbacks
-    void processAdvertisementData(const uint8_t* address, int8_t rssi,
-                                  uint16_t manufacturer_id,
-                                  const uint8_t* manufacturer_data,
-                                  size_t manufacturer_data_len);
-    
-    // Check if manufacturer ID should be processed
-    bool shouldProcessManufacturerData(uint16_t manufacturerId) const;
-    
-    // Static instance for callbacks
     static BluetoothLowLevelDriver* s_instance;
+    static void hostTask(void* param);
+    static void onHostSync();
+    static void onHostReset(int reason);
+    static int onGapEvent(struct ble_gap_event* event, void* arg);
+    static int gattAccess(uint16_t conn_handle, uint16_t attr_handle,
+                          struct ble_gatt_access_ctxt* ctxt, void* arg);
 };

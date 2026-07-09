@@ -69,6 +69,15 @@ export function ExperimentsModal({ flags, setFlag, onClose }: ExperimentsModalPr
             checked={flags.muteByDefault}
             onChange={(v) => setFlag('muteByDefault', v)}
           />
+          <div className="flag-sep" />
+          <FlagRow
+            id="flag-device-logs"
+            title="Device logs sidebar"
+            badge="Secret"
+            desc="Show a live sidebar of firmware log lines streamed over the BLE Log characteristic after pairing."
+            checked={flags.deviceLogs}
+            onChange={(v) => setFlag('deviceLogs', v)}
+          />
           <div className="flag-sep" style={{ margin: '4px 0' }} />
           <div className="flag-section-head">User profile</div>
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>

@@ -1,10 +1,9 @@
 mainmenu "ILSS Lanyard application"
 
-
 menu "ILSS Lanyard - Configuration"
 rsource "Kconfig.debug"
 rsource "Kconfig.logging"
 rsource "Kconfig.preferences"
-rsource "Kconfig.azure"
+rsource "Kconfig.twin"
 
 endmenu

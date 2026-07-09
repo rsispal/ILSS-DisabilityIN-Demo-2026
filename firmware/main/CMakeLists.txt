@@ -1,72 +1,61 @@
-# ESP-IDF Component Registration
-# All source code is now in ../src/
+# ESP-IDF Component Registration — digital twin build
 idf_component_register(
-    SRCS 
+    SRCS
         "../src/main.cpp"
         "../src/lowlevel/LowLevel.cpp"
-        "../src/lowlevel/wifi/WiFiLowLevelDriver.cpp"
         "../src/lowlevel/usb/UsbLowLevelDriver.cpp"
         "../src/lowlevel/i2c/I2CLowLevelDriver.cpp"
         "../src/lowlevel/bluetooth/BluetoothLowLevelDriver.cpp"
         "../src/lowlevel/buzzer/BuzzerLowLevelDriver.cpp"
         "../src/lowlevel/nvs/NVSLowLevelDriver.cpp"
         "../src/lowlevel/haptics/DRV2605Driver.cpp"
-        "../src/lowlevel/network/NetworkClient.cpp"
-        "../src/layers/ble-beacon/BLEBeacon.cpp"
-        "../src/features/bluetooth/Bluetooth.cpp"
         "../src/features/buzzer/Buzzer.cpp"
         "../src/features/side-buttons/SideButtons.cpp"
         "../src/features/rgb-led/RGBLED.cpp"
-        "../src/features/azure-iot/AzureIoT.cpp"
+        "../src/features/ble-twin/BleTwin.cpp"
+        "../src/features/usb/USBCLI.cpp"
+        "../src/protocol/PacketCodec.cpp"
         "../src/utils/Logger.cpp"
         "../src/utils/JSON.cpp"
         "../src/utils/Utils.cpp"
         "../src/state/State.cpp"
-        # TODO: Port USB features to new API
-        "../src/features/usb/USBProtocol.cpp"
-        "../src/features/usb/USBCLI.cpp"
-        "../src/application/ILSSLanyardApplication/ILSSLanyardApplication.cpp"
-        "../src/application/FeatureTestApplication/FeatureTestApplication.cpp"
-    INCLUDE_DIRS 
+        "../src/application/DigitalTwinApplication/DigitalTwinApplication.cpp"
+        "../src/application/IndicationController/IndicationController.cpp"
+    INCLUDE_DIRS
         ".."
         "../src"
         "../src/lowlevel"
-        "../src/lowlevel/wifi"
         "../src/lowlevel/usb"
         "../src/lowlevel/i2c"
         "../src/lowlevel/bluetooth"
         "../src/lowlevel/buzzer"
         "../src/lowlevel/haptics"
-        "../src/lowlevel/network"
-        "../src/layers/ble-beacon"
-        "../src/features/bluetooth"
+        "../src/lowlevel/nvs"
         "../src/features/buzzer"
         "../src/features/side-buttons"
         "../src/features/rgb-led"
-        "../src/features/azure-iot"
+        "../src/features/ble-twin"
+        "../src/features/usb"
+        "../src/protocol"
         "../src/utils"
         "../src/constants"
         "../src/state"
-        "../src/features/usb"
         "../src/application"
-        "../src/application/ILSSLanyardApplication"
-        "../src/application/FeatureTestApplication"
+        "../src/application/DigitalTwinApplication"
+        "../src/application/IndicationController"
         "../src/speech"
+        "../src/layers/ble-beacon"
     REQUIRES
         led_strip
+        button
         esp_driver_i2c
         esp_driver_gpio
         esp_driver_ledc
         esp_driver_usb_serial_jtag
-        esp_netif
         esp_timer
         bt
-        esp_http_client
         nvs_flash
         json
         mbedtls
-        mqtt
-    EMBED_FILES
-        "../src/speech/FIRE_ALARM.raw"
-        "../src/speech/OCCUPANT_ALERT.raw"
+        app_update
 )

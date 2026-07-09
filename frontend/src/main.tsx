@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles/index.css';
+import './styles/device-logs.css';
 
 // Forge DS components emit React "unique key" dev-warnings from their own
 // internal arrays; silence that one upstream message so the console stays clean.

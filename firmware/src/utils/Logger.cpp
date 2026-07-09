@@ -17,41 +17,54 @@ bool Logger::shouldLog(LogLevel level) const {
     return static_cast<uint8_t>(logLevel_) >= static_cast<uint8_t>(level);
 }
 
+void Logger::fanOutBle(char level_ch, const char* tag, const char* msg) const {
+    if (!ble_sink_) return;
+    char line[200];
+    snprintf(line, sizeof(line), "%c (%s) %s", level_ch, tag ? tag : "?", msg ? msg : "");
+    ble_sink_(line);
+}
+
 void Logger::logMessage(const char* tag, LogLevel level, const char* fmt, va_list args) const {
     if (!shouldLog(level)) return;
-    
+
     char buffer[512];
     vsnprintf(buffer, sizeof(buffer), fmt, args);
-    
+
+    char level_ch = 'I';
     switch (level) {
         case LogLevel::DEBUG:
             ESP_LOGD(tag, "%s", buffer);
+            level_ch = 'D';
             break;
         case LogLevel::INFO:
             ESP_LOGI(tag, "%s", buffer);
+            level_ch = 'I';
             break;
         case LogLevel::WARNING:
             ESP_LOGW(tag, "%s", buffer);
+            level_ch = 'W';
             break;
         case LogLevel::ERROR:
             ESP_LOGE(tag, "%s", buffer);
+            level_ch = 'E';
             break;
         default:
             break;
     }
+    fanOutBle(level_ch, tag, buffer);
 }
 
 void Logger::logBinary(const char* tag, LogLevel level, const uint8_t* data, const size_t size, const char* fmt, va_list args) const {
     if (!shouldLog(level)) return;
-    
+
     char msg_buffer[256];
     vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
-    
+
     ESP_LOGI(tag, "%s [%zu bytes]", msg_buffer, size);
     ESP_LOG_BUFFER_HEX(tag, data, size);
+    fanOutBle('I', tag, msg_buffer);
 }
 
-// Instance logging methods
 void Logger::LOGI(const char* tag, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -108,7 +121,6 @@ void Logger::LOGEB(const char* tag, const uint8_t* data, const size_t size, cons
     va_end(args);
 }
 
-// Static logging methods (always log, no level checking)
 void Logger::sLOGI(const char* tag, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);

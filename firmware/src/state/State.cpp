@@ -1,7 +1,7 @@
 #include "State.h"
 #include <algorithm>
 #include <cstring>
-#include "../layers/ble-beacon/BLEBeacon.h"
+#include "../layers/ble-beacon/BLEBeacon.h"  // stub — beacon scan removed
 #include "../utils/Utils.h"
 #include "../lowlevel/nvs/NVSLowLevelDriver.h"
 #include <sstream>
