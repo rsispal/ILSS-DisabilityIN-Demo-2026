@@ -84,7 +84,7 @@ void USBCLI::runFactoryReset() {
 
 void USBCLI::runFactoryMode() {
     writeln("\r\n=== Factory / Identity ===");
-    writeln("Serial is programmed via tools/provision_lanyard.py into ble_prov.");
+    writeln("Serial is programmed via tools/provision-lanyard.sh into ble_prov.");
     writeln("Options: 1=show status  2=wipe NVS bonds/prefs  e=exit");
     for (;;) {
         write("> ");

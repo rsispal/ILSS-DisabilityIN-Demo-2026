@@ -17,11 +17,15 @@ idf.py build
 idf.py -p /dev/ttyACM0 flash monitor
 ```
 
-Factory identity / secret provisioning:
+## Factory provisioning (`ble_prov`)
+
+Program **once per board** (not on every app flash). Uses a small Go CLI — no Python required.
 
 ```bash
-python tools/provision_lanyard.py --port /dev/ttyACM0 --serial ILSS-LY-0001
+./tools/provision-lanyard.sh -port /dev/ttyACM0 -serial ILSS-LY-0001
 ```
+
+See **[docs/PROVISIONING.md](docs/PROVISIONING.md)** for when to re-run, flags, and verification.
 
 ## Boot flow
 
@@ -34,6 +38,7 @@ python tools/provision_lanyard.py --port /dev/ttyACM0 --serial ILSS-LY-0001
 - [docs/BLE_GATT.md](docs/BLE_GATT.md) — GATT services & characteristics
 - [docs/PACKET_PROTOCOL.md](docs/PACKET_PROTOCOL.md) — packed bidirectional frames
 - [docs/PAIRING.md](docs/PAIRING.md) — pairing, secrets, encryption
+- [docs/PROVISIONING.md](docs/PROVISIONING.md) — `ble_prov` / `provision-lanyard` usage
 
 ## Layout
 
@@ -48,6 +53,8 @@ firmware/
     protocol/           PacketCodec + TwinState
     state/              NVS-backed device state
     utils/              Logger (USB serial + optional BLE log fan-out)
-  tools/                provision_lanyard.py
+  tools/
+    provision-lanyard/  Go CLI (preferred)
+    provision-lanyard.sh
   docs/
 ```

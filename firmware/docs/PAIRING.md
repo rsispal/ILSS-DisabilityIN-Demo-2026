@@ -2,27 +2,25 @@
 
 ## Factory provisioning
 
-Partition `ble_prov` (see `partitions.csv`) stores:
+Before pairing can use a long-term secret, program the `ble_prov` partition once per unit.
 
-- Device UUIDv7 (16 bytes)
-- Serial string
-- Brand enum
-- Long-term secret (32 bytes)
-
-Program with:
+**Full when/how guide:** [PROVISIONING.md](PROVISIONING.md)
 
 ```bash
-python tools/provision_lanyard.py --port PORT --serial SERIAL [--secret HEX64]
+# From firmware/
+./tools/provision-lanyard.sh -port /dev/ttyACM0 -serial ILSS-LY-0001
 ```
+
+That writes device UUIDv7, serial, brand, and a 32-byte factory secret. Day-to-day app flashes do not wipe this partition.
 
 ## Pairing flow
 
 1. Web connects over Web Bluetooth (link-layer may be unencrypted initially).
-2. Write Pairing characteristic: exchange device UUIDv7 + ephemeral Curve25519 public keys (or session nonce fallback).
-3. Derive session key via HKDF → AES-256-GCM.
+2. Write Pairing characteristic: exchange device UUIDv7 + session nonce (and optional Curve25519 material).
+3. Derive session key via HKDF(factory_secret, nonce) → AES-256-GCM key material.
 4. Encrypt packed-protocol **Data** fields with the session key (headers remain clear for routing).
-5. Unpair clears NVS bond (`ilss_ble` namespace) and stops indications if required.
+5. Unpair clears the session / NVS bond (`ilss_ble`) as implemented on the device.
 
 ## Fallback
 
-If browser Web Crypto / Web Bluetooth constraints block full DH, use the factory-provisioned shared secret with a random session nonce exchanged on pair. Firmware still implements Curve25519 for native clients.
+If `ble_prov` is empty, firmware boots with defaults and can still sync twin state without encryption. Prefer provisioning for demos that need a stable serial and paired secret.
