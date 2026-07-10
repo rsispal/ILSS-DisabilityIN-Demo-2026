@@ -1,12 +1,9 @@
 #pragma once
 
-#include <vector>
 #include <cstdint>
+#include <string>
 #include "../constants/Constants.h"
 #include "../utils/Logger.h"
-
-// Forward declaration
-class BLEBeacon;
 
 // Forward declaration
 class NVSLowLevelDriver;
@@ -77,17 +74,6 @@ public:
     BatteryChargingStatus getBatteryChargingStatus() const;
     bool setBatteryChargingStatus(BatteryChargingStatus batteryChargingStatus);
 
-    // Beacon management methods
-    void addOrUpdateBeacon(const BLEBeacon &beacon);
-    void removeStaleBeacons();
-    void clearBeacons();
-    const std::vector<BLEBeacon> &getBeacons() const;
-    BLEBeacon *getBestBeacon();
-
-    // Fast beacon scan mode
-    bool isFastBeaconScanMode() const;
-    void setFastBeaconScanMode(bool enabled);
-    int getCurrentBeaconScanWaitTimeSeconds() const;
 
     // Public access for dependency injection
     Logger *logger = nullptr;
@@ -130,11 +116,6 @@ private:
     // System state - personal alert
     bool isInPersonalAlertMode = false;
 
-    // Beacon scan results - maximum of 5 beacons
-    std::vector<BLEBeacon> beacons;
-    static constexpr size_t MAX_BEACONS = 5;
-    static constexpr uint32_t BEACON_STALE_MS = 30000; // 30 seconds
-    
     // NVS driver (set via setNVSDriver)
     NVSLowLevelDriver* nvs_driver_ = nullptr;
 

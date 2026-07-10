@@ -43,6 +43,8 @@ export function Lanyard({
   const { feedMomentum, clearMomentum } = useSwingPhysics(swingEnabled, swayRef);
 
   const displayLedPattern = introLedWait ? 'off' : heartbeatPulse ? 'solid' : ledPattern;
+  const idleBright = Math.max(0, Math.min(1, ledBrightness / 100));
+  // Intro keeps --led-on at 0 (no face-glow); CSS owns SVG opacity for the pulse.
   const displayLedOn =
     introLedWait || introPulse
       ? false
@@ -50,7 +52,7 @@ export function Lanyard({
         ? true
         : ledOn && ledBrightness > 0;
   const displayLedRgb = heartbeatPulse ? '0, 220, 48' : ledRgb;
-  const displayLedBright = heartbeatPulse ? 1 : Math.max(0, Math.min(1, ledBrightness / 100));
+  const displayLedBright = heartbeatPulse ? 1 : idleBright;
 
   const sceneClasses = [
     'scene',

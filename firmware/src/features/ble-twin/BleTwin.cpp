@@ -1,65 +1,19 @@
 #include "BleTwin.h"
+#include "BleCrypto.h"
 #include "../../lowlevel/bluetooth/BluetoothLowLevelDriver.h"
 #include "../../application/IndicationController/IndicationController.h"
 #include "../../state/State.h"
-#include "../../lowlevel/nvs/NVSLowLevelDriver.h"
 #include "../../lowlevel/LowLevel.h"
 #include "esp_app_desc.h"
 #include "esp_timer.h"
-#include "mbedtls/md.h"
 #include "esp_partition.h"
 #include <cstring>
 
-/** HKDF-SHA256 via mbedtls HMAC (avoids CONFIG_MBEDTLS_HKDF_C). */
-static int hkdf_sha256(const uint8_t* salt, size_t salt_len,
-                       const uint8_t* ikm, size_t ikm_len,
-                       const uint8_t* info, size_t info_len,
-                       uint8_t* okm, size_t okm_len) {
-    const mbedtls_md_info_t* md = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-    if (!md || okm_len == 0 || okm_len > 255 * 32) return -1;
-
-    uint8_t prk[32];
-    // Extract: PRK = HMAC(salt, IKM). Empty salt -> HashLen zeros.
-    uint8_t zeros[32]{};
-    const uint8_t* used_salt = (salt && salt_len) ? salt : zeros;
-    size_t used_salt_len = (salt && salt_len) ? salt_len : sizeof(zeros);
-    if (mbedtls_md_hmac(md, used_salt, used_salt_len, ikm, ikm_len, prk) != 0) {
-        return -1;
-    }
-
-    // Expand: OKM = T(1) | T(2) | ...  T(i) = HMAC(PRK, T(i-1) | info | i)
-    uint8_t t[32]{};
-    size_t t_len = 0;
-    size_t offset = 0;
-    uint8_t counter = 1;
-    while (offset < okm_len) {
-        mbedtls_md_context_t ctx;
-        mbedtls_md_init(&ctx);
-        if (mbedtls_md_setup(&ctx, md, 1) != 0) {
-            mbedtls_md_free(&ctx);
-            return -1;
-        }
-        if (mbedtls_md_hmac_starts(&ctx, prk, sizeof(prk)) != 0 ||
-            (t_len && mbedtls_md_hmac_update(&ctx, t, t_len) != 0) ||
-            (info_len && info && mbedtls_md_hmac_update(&ctx, info, info_len) != 0) ||
-            mbedtls_md_hmac_update(&ctx, &counter, 1) != 0 ||
-            mbedtls_md_hmac_finish(&ctx, t) != 0) {
-            mbedtls_md_free(&ctx);
-            return -1;
-        }
-        mbedtls_md_free(&ctx);
-        t_len = 32;
-        size_t copy = (okm_len - offset < 32) ? (okm_len - offset) : 32;
-        std::memcpy(okm + offset, t, copy);
-        offset += copy;
-        ++counter;
-    }
-    return 0;
-}
-
-BleTwin::BleTwin(Logger* logger, BluetoothLowLevelDriver* ble,
+BleTwin::BleTwin(Logger* logger, LowLevel* lowLevel,
                  IndicationController* indications, State* state)
-    : logger_(logger), ble_(ble), indications_(indications), state_(state) {
+    : logger_(logger), lowLevel_(lowLevel),
+      ble_(lowLevel ? &lowLevel->get_bluetooth() : nullptr),
+      indications_(indications), state_(state) {
     log_queue_ = xQueueCreate(kLogQueueDepth, sizeof(LogLine));
 }
 
@@ -95,11 +49,11 @@ bool BleTwin::loadProvisioning() {
     std::memcpy(device_uuid_, buf + 4, 16);
     char serial[33]{};
     std::memcpy(serial, buf + 20, 32);
-    ble_->brand_ = buf[52];
+    ble_->setBrand(buf[52]);
     std::memcpy(factory_secret_, buf + 53, 32);
     has_factory_secret_ = true;
-    strncpy(ble_->serial_, serial, sizeof(ble_->serial_) - 1);
-    logger_->LOGI(TAG, "Loaded provisioned serial=%s", ble_->serial_);
+    ble_->setSerial(serial);
+    logger_->LOGI(TAG, "Loaded provisioned serial=%s", ble_->serial());
     return true;
 }
 
@@ -108,15 +62,14 @@ bool BleTwin::begin(const char* adv_name) {
 
     const esp_app_desc_t* app = esp_app_get_description();
     if (app) {
-        strncpy(ble_->sw_version_, app->version, sizeof(ble_->sw_version_) - 1);
+        ble_->setSwVersion(app->version);
     }
-    ble_->battery_ = state_->getBatteryLevel() ? state_->getBatteryLevel() : 100;
+    ble_->setBattery(state_->getBatteryLevel() ? state_->getBatteryLevel() : 100);
 
     // Provisioned serial from ble_prov wins for Chrome picker / advertising name.
     // Only fall back to caller-supplied name when unprovisioned.
     if (!provisioned && adv_name && adv_name[0]) {
-        strncpy(ble_->serial_, adv_name, sizeof(ble_->serial_) - 1);
-        ble_->serial_[sizeof(ble_->serial_) - 1] = '\0';
+        ble_->setSerial(adv_name);
     }
 
     ble_->setWriteCallback([this](uint16_t h, const uint8_t* d, size_t n) { onWrite(h, d, n); });
@@ -126,7 +79,7 @@ bool BleTwin::begin(const char* adv_name) {
         logger_->LOGE(TAG, "BLE begin failed");
         return false;
     }
-    if (!ble_->startAdvertising(ble_->serial_)) {
+    if (!ble_->startAdvertising(ble_->serial())) {
         logger_->LOGE(TAG, "Advertising failed");
         return false;
     }
@@ -151,18 +104,20 @@ void BleTwin::process() {
     if (!ble_) return;
 
     // Rising edge on Status CCCD — push once from app task (never from GAP).
-    if (ble_->status_notify_enabled_ && !status_cccd_seen_) {
+    if (ble_->statusNotifyEnabled() && !status_cccd_seen_) {
         status_cccd_seen_ = true;
         if (indications_) publishStatus(indications_->current());
-    } else if (!ble_->status_notify_enabled_) {
+    } else if (!ble_->statusNotifyEnabled()) {
         status_cccd_seen_ = false;
     }
 
-    tickHeartbeat();
+    heartbeat_.tick(paired_ && isConnected(), nowMs(),
+                    [this]() { emitHeartbeatPoll(); },
+                    [this](const char* why) { failHeartbeat(why); });
 
-    if (!log_queue_ || !ble_->log_notify_enabled_) {
+    if (!log_queue_ || !ble_->logNotifyEnabled()) {
         // Drop queued lines while unsubscribed so we don't backlog forever.
-        if (log_queue_ && !ble_->log_notify_enabled_) {
+        if (log_queue_ && !ble_->logNotifyEnabled()) {
             LogLine drop;
             while (xQueueReceive(log_queue_, &drop, 0) == pdTRUE) {
             }
@@ -173,7 +128,7 @@ void BleTwin::process() {
     // Bound work per tick so we don't starve the event loop.
     for (int i = 0; i < 4; ++i) {
         if (xQueueReceive(log_queue_, &line, 0) != pdTRUE) break;
-        ble_->notify(ble_->handle_log_, reinterpret_cast<const uint8_t*>(line.text), line.len);
+        ble_->notify(ble_->handleLog(), reinterpret_cast<const uint8_t*>(line.text), line.len);
     }
 }
 
@@ -182,7 +137,7 @@ uint32_t BleTwin::nowMs() {
 }
 
 void BleTwin::emitHeartbeatPoll() {
-    if (!paired_ || !isConnected() || !ble_->event_notify_enabled_) return;
+    if (!paired_ || !isConnected() || !ble_->eventNotifyEnabled()) return;
     ilss::Packet pkt;
     pkt.flags = ilss::FLAG_CMD;
     pkt.code = ilss::APP_CODE_HEARTBEAT;
@@ -194,46 +149,24 @@ void BleTwin::emitHeartbeatPoll() {
     } else {
         ilss::TwinState::idle().pack(pkt.data);
     }
-    pending_hb_msg_id_ = pkt.message_id;
-    awaiting_hb_ack_ = true;
-    hb_await_since_ms_ = nowMs();
-    last_hb_tx_ms_ = hb_await_since_ms_;
+    heartbeat_.markPollSent(pkt.message_id, nowMs());
     sendPacket(pkt, true);
-    logger_->LOGI(TAG, "Heartbeat poll TX msgId=%u", pending_hb_msg_id_);
-}
-
-void BleTwin::tickHeartbeat() {
-    if (!paired_ || !isConnected()) {
-        awaiting_hb_ack_ = false;
-        return;
-    }
-    const uint32_t now = nowMs();
-    if (awaiting_hb_ack_) {
-        if ((now - hb_await_since_ms_) >= kHeartbeatAckTimeoutMs) {
-            failHeartbeat("ACK timeout (4s)");
-        }
-        return;
-    }
-    if (last_hb_tx_ms_ == 0 || (now - last_hb_tx_ms_) >= kHeartbeatIntervalMs) {
-        emitHeartbeatPoll();
-    }
+    logger_->LOGI(TAG, "Heartbeat poll TX msgId=%u", heartbeat_.pendingMsgId());
 }
 
 void BleTwin::failHeartbeat(const char* why) {
     logger_->LOGW(TAG, "Heartbeat failed — %s; disconnect → unpaired", why ? why : "unknown");
-    awaiting_hb_ack_ = false;
-    pending_hb_msg_id_ = 0;
+    heartbeat_.reset();
     paired_ = false;
     encrypt_enabled_ = false;
     if (ble_) ble_->disconnect();
 }
 
 void BleTwin::handleInboundAck(const ilss::Packet& pkt) {
-    if (!awaiting_hb_ack_) return;
     if (pkt.code != ilss::APP_CODE_HEARTBEAT) return;
-    if (pkt.message_id != pending_hb_msg_id_) return;
-    awaiting_hb_ack_ = false;
-    logger_->LOGI(TAG, "Heartbeat ACK RX msgId=%u", pkt.message_id);
+    if (heartbeat_.onAck(pkt.code, pkt.message_id)) {
+        logger_->LOGI(TAG, "Heartbeat ACK RX msgId=%u", pkt.message_id);
+    }
 }
 
 void BleTwin::onConnection(bool connected, uint16_t /*conn*/) {
@@ -241,9 +174,7 @@ void BleTwin::onConnection(bool connected, uint16_t /*conn*/) {
         paired_ = false;
         encrypt_enabled_ = false;
         status_cccd_seen_ = false;
-        awaiting_hb_ack_ = false;
-        pending_hb_msg_id_ = 0;
-        last_hb_tx_ms_ = 0;
+        heartbeat_.onDisconnected();
         if (on_disconnect_) on_disconnect_();
     } else if (on_connecting_) {
         on_connecting_();
@@ -251,9 +182,9 @@ void BleTwin::onConnection(bool connected, uint16_t /*conn*/) {
 }
 
 void BleTwin::publishStatus(const ilss::TwinState& state) {
-    state.pack(ble_->status_bytes_);
-    if (ble_->status_notify_enabled_) {
-        ble_->notify(ble_->handle_status_, ble_->status_bytes_, sizeof(ble_->status_bytes_));
+    state.pack(ble_->statusBytes());
+    if (ble_->statusNotifyEnabled()) {
+        ble_->notify(ble_->handleStatus(), ble_->statusBytes(), ble_->statusBytesSize());
     }
 }
 
@@ -281,8 +212,8 @@ void BleTwin::sendPacket(ilss::Packet& pkt, bool as_event) {
         logger_->LOGE(TAG, "encode failed");
         return;
     }
-    if (as_event && ble_->event_notify_enabled_) {
-        ble_->notify(ble_->handle_event_, buf, n);
+    if (as_event && ble_->eventNotifyEnabled()) {
+        ble_->notify(ble_->handleEvent(), buf, n);
     }
 }
 
@@ -368,18 +299,18 @@ void BleTwin::handleCommandPacket(const ilss::Packet& pkt) {
 
 void BleTwin::onWrite(uint16_t handle, const uint8_t* data, size_t len) {
     // Handles may still be 0 if a write races host sync — refresh and retry match.
-    if (ble_->handle_cmd_ == 0 || ble_->handle_pairing_ == 0) {
+    if (ble_->handleCmd() == 0 || ble_->handlePairing() == 0) {
         ble_->refreshGattHandles();
     }
 
-    if (handle == ble_->handle_pairing_) {
+    if (handle == ble_->handlePairing()) {
         logger_->LOGI(TAG, "Pairing write %u bytes", static_cast<unsigned>(len));
         handlePairingWrite(data, len);
         return;
     }
-    if (handle != ble_->handle_cmd_) {
+    if (handle != ble_->handleCmd()) {
         logger_->LOGD(TAG, "Ignore write handle=%u (cmd=%u pairing=%u)",
-                      handle, ble_->handle_cmd_, ble_->handle_pairing_);
+                      handle, ble_->handleCmd(), ble_->handlePairing());
         return;
     }
 
@@ -426,8 +357,8 @@ void BleTwin::handlePairingWrite(const uint8_t* data, size_t len) {
         std::memset(session_key_, 0, sizeof(session_key_));
         logger_->LOGI(TAG, "Unpaired");
         uint8_t resp[] = {0x03, 0x01};
-        if (ble_->pairing_notify_enabled_) {
-            ble_->notify(ble_->handle_pairing_, resp, sizeof(resp));
+        if (ble_->pairingNotifyEnabled()) {
+            ble_->notify(ble_->handlePairing(), resp, sizeof(resp));
         }
         return;
     }
@@ -437,10 +368,9 @@ void BleTwin::handlePairingWrite(const uint8_t* data, size_t len) {
         if (len >= 33) std::memcpy(nonce, data + 17, 16);
 
         if (has_factory_secret_) {
-            // HKDF-SHA256(salt=nonce, ikm=factory_secret, info="ILSS-BLE") -> session_key
-            int rc = hkdf_sha256(nonce, 16, factory_secret_, 32,
-                                 reinterpret_cast<const uint8_t*>("ILSS-BLE"), 8,
-                                 session_key_, 32);
+            int rc = ilss::hkdfSha256(nonce, 16, factory_secret_, 32,
+                                      reinterpret_cast<const uint8_t*>("ILSS-BLE"), 8,
+                                      session_key_, 32);
             if (rc == 0) {
                 encrypt_enabled_ = true;
                 logger_->LOGI(TAG, "Session key derived");
@@ -449,13 +379,12 @@ void BleTwin::handlePairingWrite(const uint8_t* data, size_t len) {
             }
         }
         paired_ = true;
-        last_hb_tx_ms_ = nowMs();  // grace period before first poll
-        awaiting_hb_ack_ = false;
+        heartbeat_.onPaired(nowMs());
         uint8_t resp[18];
         resp[0] = 0x02;  // pair_ok
         std::memcpy(resp + 1, device_uuid_, 16);
-        if (ble_->pairing_notify_enabled_) {
-            ble_->notify(ble_->handle_pairing_, resp, 17);
+        if (ble_->pairingNotifyEnabled()) {
+            ble_->notify(ble_->handlePairing(), resp, 17);
         }
         logger_->LOGI(TAG, "Paired with master");
         if (on_paired_) on_paired_();

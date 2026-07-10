@@ -3,8 +3,8 @@
 #include "freertos/task.h"
 #include "../../application/Hardware.h"
 
-RGBLED::RGBLED(State* state, LowLevel* lowLevel)
-    : state(state), lowLevel(lowLevel), m_initialized(false),
+RGBLED::RGBLED(State* state)
+    : state(state), m_initialized(false),
       led_strip(nullptr),
       effect_change_requested(false),
       effect_step(0), last_update(0)

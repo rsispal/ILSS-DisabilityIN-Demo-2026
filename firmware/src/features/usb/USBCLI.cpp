@@ -2,12 +2,12 @@
 #include "../../utils/Logger.h"
 #include "../../lowlevel/LowLevel.h"
 #include "../../lowlevel/usb/UsbLowLevelDriver.h"
-#include "../../lowlevel/haptics/DRV2605Driver.h"
 #include "../../lowlevel/nvs/NVSLowLevelDriver.h"
 #include "../../state/State.h"
 #include "nvs_flash.h"
 #include "../../features/rgb-led/RGBLED.h"
 #include "../../features/buzzer/Buzzer.h"
+#include "../../features/haptics/Haptics.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -99,10 +99,12 @@ void USBCLI::runFactoryMode() {
 void USBCLI::runTestMode() {
     writeln("\r\n=== Hardware Test ===");
     writeln("led | buzz | hap | fa | pa | e");
-    RGBLED led(state_, lowLevel_);
+    RGBLED led(state_);
     led.begin();
     Buzzer buzzer(state_, lowLevel_);
     buzzer.begin();
+    Haptics haptics(state_, lowLevel_);
+    haptics.begin();
 
     for (;;) {
         write("test> ");
@@ -122,9 +124,9 @@ void USBCLI::runTestMode() {
             }
             buzzer.requestStop();
         } else if (line == "hap") {
-            lowLevel_->get_haptics().play_pattern(14);
+            haptics.playStrongBuzz();
             vTaskDelay(pdMS_TO_TICKS(500));
-            lowLevel_->get_haptics().stop();
+            haptics.stop();
         } else if (line == "fa") {
             led.queueEffect(LedEffect::DOUBLE_FLASH, LedColor::RED, Brightness::B100, 5000);
             buzzer.queueCode3Sweep(2700, 3500, 1);

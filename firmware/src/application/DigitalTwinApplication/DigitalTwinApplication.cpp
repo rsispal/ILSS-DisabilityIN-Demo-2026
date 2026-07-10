@@ -2,10 +2,10 @@
 #include "../IndicationController/IndicationController.h"
 #include "../../features/rgb-led/RGBLED.h"
 #include "../../features/buzzer/Buzzer.h"
+#include "../../features/haptics/Haptics.h"
 #include "../../features/side-buttons/SideButtons.h"
 #include "../../features/ble-twin/BleTwin.h"
 #include "../../lowlevel/LowLevel.h"
-#include "../../lowlevel/bluetooth/BluetoothLowLevelDriver.h"
 #include "../../state/State.h"
 #include "../../protocol/TwinState.h"
 #include "../../application/Hardware.h"
@@ -22,6 +22,7 @@ DigitalTwinApplication::~DigitalTwinApplication() {
     delete bleTwin_;
     delete indications_;
     delete sideButtons_;
+    delete haptics_;
     delete buzzer_;
     delete rgbLed_;
     if (event_queue_) vQueueDelete(event_queue_);
@@ -150,17 +151,20 @@ void DigitalTwinApplication::begin() {
     logger_->LOGI(TAG, "Starting digital twin application");
     event_queue_ = xQueueCreate(16, sizeof(AppEvent));
 
-    rgbLed_ = new RGBLED(state_, lowLevel_);
+    rgbLed_ = new RGBLED(state_);
     rgbLed_->begin();
     // Power-up flourish already ran in main; go straight to unpaired ready.
 
     buzzer_ = new Buzzer(state_, lowLevel_);
     buzzer_->begin();
 
-    indications_ = new IndicationController(logger_, state_, lowLevel_, rgbLed_, buzzer_);
+    haptics_ = new Haptics(state_, lowLevel_);
+    haptics_->begin();
+
+    indications_ = new IndicationController(logger_, state_, rgbLed_, buzzer_, haptics_);
     indications_->begin();
 
-    sideButtons_ = new SideButtons(state_, lowLevel_, HARDWARE_BUTTON_LEFT_PIN, HARDWARE_BUTTON_RIGHT_PIN);
+    sideButtons_ = new SideButtons(state_, HARDWARE_BUTTON_LEFT_PIN, HARDWARE_BUTTON_RIGHT_PIN);
     sideButtons_->begin();
     sideButtons_->setEventCallback([this](ButtonEvent event) {
         if (event == ButtonEvent::BOTH_HOLD) {
@@ -178,7 +182,7 @@ void DigitalTwinApplication::begin() {
         }
     });
 
-    bleTwin_ = new BleTwin(logger_, &lowLevel_->get_bluetooth(), indications_, state_);
+    bleTwin_ = new BleTwin(logger_, lowLevel_, indications_, state_);
     bleTwin_->setTwinStateHandler([this](const ilss::TwinState& desired, ilss::TwinNakReason* reason) {
         return indications_->apply(desired, reason);
     });

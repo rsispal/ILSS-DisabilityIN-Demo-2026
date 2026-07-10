@@ -3,9 +3,9 @@
 #include <functional>
 #include "../../utils/Logger.h"
 #include "../../state/State.h"
-#include "../../lowlevel/LowLevel.h"
 #include "iot_button.h"
 #include "esp_timer.h"
+#include "driver/gpio.h"
 
 /**
  * Button event types
@@ -39,7 +39,7 @@ typedef std::function<void(ButtonEvent)> button_event_callback_t;
  */
 class SideButtons {
 public:
-    SideButtons(State* state, LowLevel* lowLevel, gpio_num_t left_pin = GPIO_NUM_8, gpio_num_t right_pin = GPIO_NUM_9);
+    SideButtons(State* state, gpio_num_t left_pin = GPIO_NUM_8, gpio_num_t right_pin = GPIO_NUM_9);
     ~SideButtons();
 
     /**
@@ -77,7 +77,6 @@ private:
     uint32_t getHoldThresholdMs() const;
 
     State* state;
-    LowLevel* lowLevel;
     Logger logger;
     bool m_initialized;
     

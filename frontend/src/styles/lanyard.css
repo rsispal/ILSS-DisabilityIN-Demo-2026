@@ -281,16 +281,25 @@
   100% { transform: scale(2.1); opacity: 0; }
 }
 
-/* first-load intro: LED starts off, then fades to green with 2 pulse rings */
-.scene.intro-pulse .led-svg[data-pat="solid"] .led-stroke { animation: ledIntroIn 1s ease-out forwards; }
-.scene.intro-pulse .led-svg[data-pat="solid"] .led-bloom { animation: ledIntroBloom 1s ease-out forwards; }
-@keyframes ledIntroIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+/* first-load intro: fade up to 100%, hold briefly, ease down to idle (--led-bright). */
+.scene.intro-pulse .led-svg {
+  /* Override led-on×led-bright; animation owns opacity for the whole cue. */
+  opacity: 0;
+  animation: ledIntroPulse 2.6s cubic-bezier(0.33, 0, 0.2, 1) forwards;
 }
-@keyframes ledIntroBloom {
-  from { opacity: 0; }
-  to   { opacity: 0.35; }
+.scene.intro-pulse .led-svg[data-pat="solid"] .led-stroke,
+.scene.intro-pulse .led-svg[data-pat="solid"] .led-bloom {
+  /* Parent opacity drives the cue; keep stroke/bloom at full strength. */
+  opacity: 1;
+}
+.scene.intro-pulse .led-svg[data-pat="solid"] .led-bloom {
+  opacity: 0.35;
+}
+@keyframes ledIntroPulse {
+  0%   { opacity: 0; }
+  38%  { opacity: 1; }                          /* peak at 100% */
+  52%  { opacity: 1; }                          /* brief hold */
+  100% { opacity: var(--led-bright, 0.4); }     /* settle to idle */
 }
 
 .scene.intro-pulse .buzz-ring:nth-child(3) { display: none; }

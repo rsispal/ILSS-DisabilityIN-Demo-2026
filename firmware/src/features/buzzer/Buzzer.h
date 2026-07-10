@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <atomic>
+#include <functional>
 #include "freertos/FreeRTOS.h"
 #include "freertos/timers.h"
 #include "../../state/State.h"
@@ -28,6 +29,12 @@ public:
     // Basic sound methods
     void tick(uint32_t freq = 2000);
     void beep(uint32_t freq = 2000, uint32_t duration_ms = 1000);
+    /**
+     * Blocking tone that keeps the LEDC channel alive (duty 0, not ledc_stop).
+     * Optional pump callback runs ~every 20ms (e.g. RGBLED::process during boot).
+     */
+    void playToneKeepAlive(uint32_t freq, uint32_t on_ms, const std::function<void()>& pump = {});
+    void silenceKeepAlive(uint32_t gap_ms, const std::function<void()>& pump = {});
     void startContinuous(uint32_t freq = 2000);
     void stop();
     void requestStop();  // Request immediate stop (sets flag for interruptible patterns)

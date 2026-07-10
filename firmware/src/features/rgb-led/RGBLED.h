@@ -4,7 +4,6 @@
 #include <cmath>
 #include "../../utils/Logger.h"
 #include "../../state/State.h"
-#include "../../lowlevel/LowLevel.h"
 #include "../../application/Hardware.h"
 #include "led_strip.h"
 #include "led_strip_rmt.h"
@@ -72,7 +71,7 @@ enum class Brightness {
  */
 class RGBLED {
 public:
-    RGBLED(State* state, LowLevel* lowLevel);
+    explicit RGBLED(State* state);
     ~RGBLED();
 
     /**
@@ -123,7 +122,6 @@ private:
     static constexpr uint32_t UPDATE_RATE_MS = 20;  // 50Hz update rate
 
     State* state;
-    LowLevel* lowLevel;
     Logger logger;
     bool m_initialized;
 

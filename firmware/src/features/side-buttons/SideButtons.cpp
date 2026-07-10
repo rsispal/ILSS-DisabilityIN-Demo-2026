@@ -1,5 +1,4 @@
 #include "SideButtons.h"
-#include "../../lowlevel/buzzer/BuzzerLowLevelDriver.h"
 #include "../../application/Hardware.h"
 #include "esp_timer.h"
 #include "esp_log.h"
@@ -9,8 +8,8 @@
 // Initialize singleton
 SideButtons* SideButtons::instance = nullptr;
 
-SideButtons::SideButtons(State* state, LowLevel* lowLevel, gpio_num_t left_pin, gpio_num_t right_pin)
-    : state(state), lowLevel(lowLevel), m_initialized(false),
+SideButtons::SideButtons(State* state, gpio_num_t left_pin, gpio_num_t right_pin)
+    : state(state), m_initialized(false),
       left_pin_(left_pin), right_pin_(right_pin),
       left_button_handle(nullptr), right_button_handle(nullptr),
       left_button_pressed(false), right_button_pressed(false),
@@ -379,16 +378,10 @@ void SideButtons::both_hold_timer_callback(void* arg)
     SideButtons* self = static_cast<SideButtons*>(arg);
     if (self && self->left_button_pressed && self->right_button_pressed && self->both_hold_detected) {
         self->logger.LOGI(self->TAG, "Both buttons HOLD detected - triggering BOTH_HOLD");
+        // Do not beep here: Buzzer::beep()/play() used to call stop() which
+        // clearPending() + stopPatternTimer(), killing the personal/fire siren
+        // that BOTH_HOLD queues. Alert audio is the feedback.
         self->trigger_event(ButtonEvent::BOTH_HOLD);
-        
-        // Provide tactile feedback (using low-level driver directly)
-        if (self->lowLevel) {
-            // Generate a short beep using PWM
-            auto& buzzer = self->lowLevel->get_buzzer();
-            buzzer.setPWM(2000, 50);  // 2kHz, 50% duty cycle
-            vTaskDelay(pdMS_TO_TICKS(50));
-            buzzer.stop();
-        }
     }
 }
 

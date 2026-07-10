@@ -9,6 +9,7 @@ class LowLevel;
 class State;
 class RGBLED;
 class Buzzer;
+class Haptics;
 class SideButtons;
 class IndicationController;
 class BleTwin;
@@ -29,6 +30,7 @@ private:
 
     RGBLED* rgbLed_ = nullptr;
     Buzzer* buzzer_ = nullptr;
+    Haptics* haptics_ = nullptr;
     SideButtons* sideButtons_ = nullptr;
     IndicationController* indications_ = nullptr;
     BleTwin* bleTwin_ = nullptr;

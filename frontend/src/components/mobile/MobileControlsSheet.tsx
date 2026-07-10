@@ -33,6 +33,8 @@ interface MobileControlsSheetProps {
   customRemainingMs?: number;
   onResetCustom?: () => void;
   onOpenExperiments: () => void;
+  onOpenLogs?: () => void;
+  onManageConnection?: () => void;
 }
 
 export function MobileControlsSheet({
@@ -50,6 +52,8 @@ export function MobileControlsSheet({
   customRemainingMs = 0,
   onResetCustom,
   onOpenExperiments,
+  onOpenLogs,
+  onManageConnection,
 }: MobileControlsSheetProps) {
   const {
     height,
@@ -192,7 +196,10 @@ export function MobileControlsSheet({
           {advancedOpen && (
             <div className="mobile-sheet-advanced">
               <DeviceTelemetry st={st} muted={muted} />
-              <LanyardDeviceSummary className="ble-device-table--rail" />
+              <LanyardDeviceSummary
+                className="ble-device-table--rail"
+                onManageConnection={onManageConnection}
+              />
               <AdvancedLedPanel st={st} onChange={onChange} />
               <AdvancedHapticsPanel st={st} onChange={onChange} />
               <AdvancedBuzzerPanel
@@ -201,6 +208,11 @@ export function MobileControlsSheet({
                 onChange={onChange}
                 onMutedChange={onMutedChange}
               />
+              {onOpenLogs ? (
+                <Button variant="secondary" onClick={onOpenLogs} style={{ width: '100%' }}>
+                  Logs
+                </Button>
+              ) : null}
               <Button variant="secondary" onClick={onOpenExperiments} style={{ width: '100%' }}>
                 ⚗️ Experiments
               </Button>

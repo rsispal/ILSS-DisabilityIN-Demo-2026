@@ -18,14 +18,14 @@ stateDiagram-v2
 
   Unpaired --> Connecting: GATT connect
   note right of Unpaired
-    LED: blue single flash / 3s
+    LED: blue single flash / 3s @ 20%
     Ready / advertising
   end note
 
   Connecting --> PairedIdle: pair_ok
   Connecting --> Unpaired: disconnect / fail
   note right of Connecting
-    LED: blue chase
+    LED: blue chase @ 30%
     Pairing in progress
   end note
 
@@ -34,7 +34,7 @@ stateDiagram-v2
   PairedIdle --> Advanced: advanced twin (idle only)
   PairedIdle --> Unpaired: disconnect / HB fail
   note right of PairedIdle
-    LED: green solid @ 40%
+    LED: green solid @ 10% (lanyard; twin reports 40%)
     After pair: brief green flash @ 100%
     Heartbeat every 10s
   end note
@@ -42,7 +42,7 @@ stateDiagram-v2
   AlertFire --> PairedIdle: clear / stand-down
   AlertFire --> Unpaired: disconnect / HB fail
   note right of AlertFire
-    LED: red double-flash
+    LED: red double-flash @ 100%
     Haptic: long-pulses (Alert 1000ms)
     Buzzer: code3-sweep
   end note
@@ -50,7 +50,7 @@ stateDiagram-v2
   AlertPersonal --> PairedIdle: clear / both-hold toggle
   AlertPersonal --> Unpaired: disconnect / HB fail
   note right of AlertPersonal
-    LED: purple pulse
+    LED: purple pulse @ 100%
     Haptic: long-pulses
     Buzzer: code3-siren
   end note
@@ -67,10 +67,10 @@ stateDiagram-v2
 
 | State | How entered | LED indication | Other actuators | Exit events |
 |-------|-------------|----------------|-----------------|-------------|
-| **Boot** | Power-on / reset | White + red star twinkle (~1.8s); CLI wait uses blue single flash | Soft haptic bumps + ascending beep-beep-BEEP (2–3.5 kHz) | Cue done → Unpaired |
-| **Unpaired** | Boot done, disconnect, heartbeat fail | Blue `FLASH_SINGLE_3S` | Off (stand-down clears alerts) | GATT connect → Connecting |
-| **Connecting** | BLE GAP connect (not yet paired) | Blue chase | Off | `pair_ok` → PairedIdle; disconnect → Unpaired |
-| **PairedIdle** | Successful pair / alert clear | Green solid @ 40% (pair flash @ 100% first) | Off | Twin CMD, both-hold, disconnect, HB fail |
+| **Boot** | Power-on / reset | White + red star twinkle (~1.8s); CLI wait blue single flash @ 20% | Soft haptic bumps + ascending beep-beep-BEEP (2–3.5 kHz) | Cue done → Unpaired |
+| **Unpaired** | Boot done, disconnect, heartbeat fail | Blue `FLASH_SINGLE_3S` @ 20% | Off (stand-down clears alerts) | GATT connect → Connecting |
+| **Connecting** | BLE GAP connect (not yet paired) | Blue chase @ 30% | Off | `pair_ok` → PairedIdle; disconnect → Unpaired |
+| **PairedIdle** | Successful pair / alert clear | Green solid @ 10% on lanyard (pair flash @ 100% first; twin reports 40%) | Off | Twin CMD, both-hold, disconnect, HB fail |
 | **AlertFire** | Twin fire / web fire | Red double-flash @ 100% | Long-pulses haptic, code3-sweep buzzer | Clear → PairedIdle; disconnect/HB fail → Unpaired |
 | **AlertPersonal** | Both-hold / twin personal | Purple pulse @ 100% | Long-pulses haptic, code3-siren | Clear / both-hold toggle → PairedIdle; disconnect/HB fail → Unpaired |
 | **Advanced** | Twin with advanced flag while idle | Commanded LED pattern/color/brightness | Commanded haptic/buzzer | Idle twin / autoreset; disconnect/HB fail → Unpaired |
@@ -124,12 +124,12 @@ sequenceDiagram
 
 | Cue | Color | Pattern | When |
 |-----|-------|---------|------|
-| Ready | Blue | Single flash / 3s | Unpaired |
-| Pairing | Blue | Chase | GATT connected, awaiting pair |
+| Ready | Blue | Single flash / 3s @ 20% | Unpaired / CLI wait |
+| Pairing | Blue | Chase @ 30% | GATT connected, awaiting pair |
 | Pair success | Green | Solid flash ~450ms @ 100% | `pair_ok` |
-| Idle linked | Green | Solid @ 40% | Paired, no alert |
-| Fire | Red | Double flash | Fire alert |
-| Personal | Purple | Pulse | Personal alert |
+| Idle linked | Green | Solid @ 10% (lanyard; twin 40%) | Paired, no alert |
+| Fire | Red | Double flash @ 100% | Fire alert |
+| Personal | Purple | Pulse @ 100% | Personal alert |
 | Web heartbeat | Green | Brief brightness pulse | UI only, on poll RX |
 
 See also: [PACKET_PROTOCOL.md](PACKET_PROTOCOL.md), [PAIRING.md](PAIRING.md), [BLE_GATT.md](BLE_GATT.md).

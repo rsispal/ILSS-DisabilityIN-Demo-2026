@@ -40,6 +40,7 @@ See **[docs/PROVISIONING.md](docs/PROVISIONING.md)** for when to re-run, flags, 
 - [docs/STATE_MACHINE.md](docs/STATE_MACHINE.md) — link/indication state machine + heartbeat
 - [docs/PAIRING.md](docs/PAIRING.md) — pairing, secrets, encryption
 - [docs/PROVISIONING.md](docs/PROVISIONING.md) — `ble_prov` / `provision-lanyard` usage
+- [docs/LAYERING.md](docs/LAYERING.md) — application / features / lowlevel boundaries
 
 ## Layout
 

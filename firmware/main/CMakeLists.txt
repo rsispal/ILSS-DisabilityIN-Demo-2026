@@ -10,9 +10,13 @@ idf_component_register(
         "../src/lowlevel/nvs/NVSLowLevelDriver.cpp"
         "../src/lowlevel/haptics/DRV2605Driver.cpp"
         "../src/features/buzzer/Buzzer.cpp"
+        "../src/features/buzzer/BuzzerSpeech.cpp"
+        "../src/features/haptics/Haptics.cpp"
         "../src/features/side-buttons/SideButtons.cpp"
         "../src/features/rgb-led/RGBLED.cpp"
         "../src/features/ble-twin/BleTwin.cpp"
+        "../src/features/ble-twin/BleCrypto.cpp"
+        "../src/features/ble-twin/BleHeartbeat.cpp"
         "../src/features/usb/USBCLI.cpp"
         "../src/protocol/PacketCodec.cpp"
         "../src/utils/Logger.cpp"
@@ -21,6 +25,7 @@ idf_component_register(
         "../src/state/State.cpp"
         "../src/application/DigitalTwinApplication/DigitalTwinApplication.cpp"
         "../src/application/IndicationController/IndicationController.cpp"
+        "../src/application/BootSequence/BootSequence.cpp"
     INCLUDE_DIRS
         ".."
         "../src"
@@ -32,6 +37,7 @@ idf_component_register(
         "../src/lowlevel/haptics"
         "../src/lowlevel/nvs"
         "../src/features/buzzer"
+        "../src/features/haptics"
         "../src/features/side-buttons"
         "../src/features/rgb-led"
         "../src/features/ble-twin"
@@ -43,8 +49,8 @@ idf_component_register(
         "../src/application"
         "../src/application/DigitalTwinApplication"
         "../src/application/IndicationController"
+        "../src/application/BootSequence"
         "../src/speech"
-        "../src/layers/ble-beacon"
     REQUIRES
         led_strip
         button

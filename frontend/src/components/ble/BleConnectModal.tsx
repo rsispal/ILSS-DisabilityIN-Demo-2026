@@ -90,9 +90,14 @@ export function BleConnectModal({ onClose }: BleConnectModalProps) {
     title = 'Couldn’t connect';
     prompt = errorText || 'Something went wrong while pairing.';
     cta = (
-      <button type="button" className="ble-modal-btn primary" onClick={() => void startPair()}>
+      <Button
+        variant="primary"
+        size="regular"
+        onClick={() => void startPair()}
+        style={{ width: '100%' }}
+      >
         Try again
-      </button>
+      </Button>
     );
   } else if (view === 'connected') {
     title = justConnected ? 'You’re connected' : 'Lanyard connected';
@@ -100,20 +105,35 @@ export function BleConnectModal({ onClose }: BleConnectModalProps) {
       ? 'Pairing succeeded. Twin state will stay in sync while this tab is open.'
       : 'This browser is linked to your wearable. Disconnect when you’re finished.';
     cta = (
-      <button type="button" className="ble-modal-btn danger" onClick={doDisconnect}>
+      <Button
+        variant="destructive-secondary"
+        size="regular"
+        onClick={doDisconnect}
+        style={{ width: '100%' }}
+      >
         Disconnect
-      </button>
+      </Button>
     );
   } else {
     cta = (
       <>
-        <button type="button" className="ble-modal-btn primary" onClick={() => void startPair()}>
+        <Button
+          variant="primary"
+          size="regular"
+          onClick={() => void startPair()}
+          style={{ width: '100%' }}
+        >
           Pair device
-        </button>
+        </Button>
         {!ble.supported && (
-          <button type="button" className="ble-modal-btn quiet" onClick={startSimulate}>
+          <Button
+            variant="quiet-secondary"
+            size="regular"
+            onClick={startSimulate}
+            style={{ width: '100%' }}
+          >
             Simulate connection
-          </button>
+          </Button>
         )}
       </>
     );

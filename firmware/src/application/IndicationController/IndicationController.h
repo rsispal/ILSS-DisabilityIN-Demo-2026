@@ -4,9 +4,9 @@
 #include "../../utils/Logger.h"
 
 class State;
-class LowLevel;
 class RGBLED;
 class Buzzer;
+class Haptics;
 
 /**
  * Maps TwinState to LED / buzzer / haptic hardware with web-matched timings.
@@ -22,8 +22,8 @@ public:
         Connected,  // After pair_ok green flash, then twin state / idle
     };
 
-    IndicationController(Logger* logger, State* state, LowLevel* lowLevel,
-                         RGBLED* rgbLed, Buzzer* buzzer);
+    IndicationController(Logger* logger, State* state,
+                         RGBLED* rgbLed, Buzzer* buzzer, Haptics* haptics);
     ~IndicationController() = default;
 
     bool begin();
@@ -47,11 +47,17 @@ public:
     void showConnectedFlash();
 
 private:
+    // Physical strip brightness ladder (web twin may report different idle %).
+    static constexpr uint8_t kHwIdleGreenPct = 10;   // paired, no alert
+    static constexpr uint8_t kHwUnpairedPct = 20;    // blue single flash
+    static constexpr uint8_t kHwPairingPct = 30;     // blue chase
+    // Pair flash + fire/personal stay at 100% (attention).
+
     Logger* logger_;
     State* state_;
-    LowLevel* lowLevel_;
     RGBLED* rgbLed_;
     Buzzer* buzzer_;
+    Haptics* haptics_;
     ilss::TwinState current_;
     LinkLedMode link_mode_ = LinkLedMode::Unpaired;
 

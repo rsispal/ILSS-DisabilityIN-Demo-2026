@@ -94,7 +94,9 @@
 
 /* ---------- BLE connect sheet (modal body) ---------- */
 .ble-sheet {
-  width: min(400px, 86vw);
+  /* Fill ModalContent width so body aligns with forge header/footer padding
+     (a fixed max-width left-aligns and looks like extra left indent). */
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -276,6 +278,11 @@
   font-weight: 500;
   letter-spacing: 0.01em;
   color: #c9d0dc;
+}
+
+.ble-device-table-row--action {
+  grid-template-columns: 1fr;
+  padding: 10px 12px 12px;
 }
 
 .ble-sheet-actions {

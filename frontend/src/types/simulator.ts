@@ -47,7 +47,7 @@ export interface DeviceState {
 export interface FeatureFlags {
   mouseSwing: boolean;
   muteByDefault: boolean;
-  /** Secret unlock: stream device logs over BLE into a sidebar */
+  /** Enable BLE / device log streaming and show a Logs button to open the sidebar */
   deviceLogs: boolean;
 }
 

@@ -9,10 +9,12 @@
 
 #include "../../protocol/PacketCodec.h"
 #include "../../protocol/TwinState.h"
+#include "BleHeartbeat.h"
 
 class BluetoothLowLevelDriver;
 class IndicationController;
 class State;
+class LowLevel;
 
 /**
  * BleTwin - GATT twin control: packet RX/TX, status, pairing, log notify.
@@ -25,7 +27,7 @@ public:
     using DisconnectHandler = std::function<void()>;
     using LinkHandler = std::function<void()>;
 
-    BleTwin(Logger* logger, BluetoothLowLevelDriver* ble, IndicationController* indications, State* state);
+    BleTwin(Logger* logger, LowLevel* lowLevel, IndicationController* indications, State* state);
     ~BleTwin();
 
     bool begin(const char* adv_name);
@@ -51,8 +53,8 @@ public:
     bool isPaired() const { return paired_; }
     bool isConnected() const;
 
-    static constexpr uint32_t kHeartbeatIntervalMs = 10000;
-    static constexpr uint32_t kHeartbeatAckTimeoutMs = 4000;
+    static constexpr uint32_t kHeartbeatIntervalMs = BleHeartbeat::kIntervalMs;
+    static constexpr uint32_t kHeartbeatAckTimeoutMs = BleHeartbeat::kAckTimeoutMs;
 
     /** Pairing: op 0x01=pair_req, 0x02=pair_ok, 0x03=unpair, 0x10=dh_pub */
     void handlePairingWrite(const uint8_t* data, size_t len);
@@ -71,6 +73,7 @@ private:
     };
 
     Logger* logger_;
+    LowLevel* lowLevel_;
     BluetoothLowLevelDriver* ble_;
     IndicationController* indications_;
     State* state_;
@@ -90,17 +93,12 @@ private:
 
     QueueHandle_t log_queue_ = nullptr;
     bool status_cccd_seen_ = false;
-
-    uint32_t last_hb_tx_ms_ = 0;
-    uint32_t hb_await_since_ms_ = 0;
-    bool awaiting_hb_ack_ = false;
-    uint16_t pending_hb_msg_id_ = 0;
+    BleHeartbeat heartbeat_;
 
     void onWrite(uint16_t handle, const uint8_t* data, size_t len);
     void onConnection(bool connected, uint16_t conn);
     void handleCommandPacket(const ilss::Packet& pkt);
     void handleInboundAck(const ilss::Packet& pkt);
-    void tickHeartbeat();
     void failHeartbeat(const char* why);
     void sendAck(const ilss::Packet& req, bool nak, uint8_t reason = 0);
     void sendPacket(ilss::Packet& pkt, bool as_event);

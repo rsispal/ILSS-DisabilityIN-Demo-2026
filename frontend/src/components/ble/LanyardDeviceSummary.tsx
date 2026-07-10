@@ -1,20 +1,20 @@
+import { Button } from '@/ds/forge';
 import { useBleTwin } from '@/context/BleTwinContext';
 
 interface LanyardDeviceSummaryProps {
   className?: string;
+  /** Opens the BLE pair / unpair modal (rail only — omit inside the modal itself). */
+  onManageConnection?: () => void;
 }
 
-export function LanyardDeviceSummary({ className }: LanyardDeviceSummaryProps) {
+export function LanyardDeviceSummary({ className, onManageConnection }: LanyardDeviceSummaryProps) {
   const ble = useBleTwin();
   const meta = ble.metadata;
-  const linkClass =
-    ble.status === 'connected' ? 'on' : ble.status === 'connecting' ? 'busy' : 'off';
-  const linkLabel =
-    ble.status === 'connected'
-      ? 'Connected'
-      : ble.status === 'connecting'
-        ? 'Connecting'
-        : 'Disconnected';
+  const connected = ble.status === 'connected';
+  const connecting = ble.status === 'connecting';
+  const linkClass = connected ? 'on' : connecting ? 'busy' : 'off';
+  const linkLabel = connected ? 'Connected' : connecting ? 'Connecting' : 'Disconnected';
+  const actionLabel = connected ? 'Disconnect' : connecting ? 'Manage' : 'Connect';
 
   return (
     <div
@@ -40,6 +40,18 @@ export function LanyardDeviceSummary({ className }: LanyardDeviceSummaryProps) {
         <span className="ble-device-table-k">Firmware</span>
         <span className="ble-device-table-v mono">{meta?.software || '—'}</span>
       </div>
+      {onManageConnection ? (
+        <div className="ble-device-table-row ble-device-table-row--action">
+          <Button
+            variant={connected ? 'destructive-secondary' : connecting ? 'secondary' : 'primary'}
+            size="regular"
+            onClick={onManageConnection}
+            style={{ width: '100%' }}
+          >
+            {actionLabel}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

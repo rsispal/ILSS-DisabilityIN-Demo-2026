@@ -44,6 +44,7 @@ export function LanyardSimulatorPage() {
   const ble = useBleTwin();
   const [pressed, setPressed] = useState<PressedButton>(null);
   const [expOpen, setExpOpen] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
   const [bleOpen, setBleOpen] = useState(false);
   const [hbPulse, setHbPulse] = useState(false);
   const [introPhase, setIntroPhase] = useState<'wait' | 'play' | 'done'>('wait');
@@ -53,7 +54,8 @@ export function LanyardSimulatorPage() {
 
   useEffect(() => {
     const playTimer = window.setTimeout(() => setIntroPhase('play'), 1000);
-    const doneTimer = window.setTimeout(() => setIntroPhase('done'), 4300);
+    // Keep play long enough for 2.6s fade-up / settle before handing off to idle.
+    const doneTimer = window.setTimeout(() => setIntroPhase('done'), 4000);
     return () => {
       window.clearTimeout(playTimer);
       window.clearTimeout(doneTimer);
@@ -62,6 +64,11 @@ export function LanyardSimulatorPage() {
 
   useAudioOutput(st.buzzer, muted);
   useLanyardScale(sceneRef, isMobile);
+
+  // Feature off → close the pane (flag enables the button, not the open state).
+  useEffect(() => {
+    if (!flags.deviceLogs) setLogsOpen(false);
+  }, [flags.deviceLogs]);
 
   const {
     setOnRemoteState,
@@ -194,7 +201,10 @@ export function LanyardSimulatorPage() {
             onResetCustom={resetToIdle}
           />
           <DeviceTelemetry st={st} muted={muted} />
-          <LanyardDeviceSummary className="ble-device-table--rail" />
+          <LanyardDeviceSummary
+            className="ble-device-table--rail"
+            onManageConnection={() => setBleOpen(true)}
+          />
         </>
       }
       center={lanyard}
@@ -227,12 +237,20 @@ export function LanyardSimulatorPage() {
             customRemainingMs={customRemainingMs}
             onResetCustom={resetToIdle}
             onOpenExperiments={() => setExpOpen(true)}
+            onOpenLogs={flags.deviceLogs ? () => setLogsOpen(true) : undefined}
+            onManageConnection={() => setBleOpen(true)}
           />
         ) : undefined
       }
       footer={
         <>
-          {!isMobile && <ExperimentsFab onOpen={() => setExpOpen(true)} />}
+          {!isMobile && (
+            <ExperimentsFab
+              onOpen={() => setExpOpen(true)}
+              showLogs={flags.deviceLogs}
+              onOpenLogs={() => setLogsOpen(true)}
+            />
+          )}
           {expOpen && (
             <ExperimentsModal
               flags={flags}
@@ -250,10 +268,7 @@ export function LanyardSimulatorPage() {
             />
           )}
           {bleOpen && <BleConnectModal onClose={() => setBleOpen(false)} />}
-          <DeviceLogsSidebar
-            open={flags.deviceLogs}
-            onClose={() => setFlag('deviceLogs', false)}
-          />
+          <DeviceLogsSidebar open={logsOpen} onClose={() => setLogsOpen(false)} />
         </>
       }
     />
