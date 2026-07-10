@@ -26,13 +26,16 @@ enum class LedEffect {
     OFF,
     PULSE,           // Smooth sine wave pulse (2s cycle)
     RAPID_PULSE,     // Rapid sine wave pulse (500ms cycle)
-    BLINK_ALTERNATE, // On/off toggle (1s cycle, 50% duty)
+    BLINK_ALTERNATE, // Odd/even pixels swap — web alt (0.7s, 2 steps)
+    HALF_HALF,       // First half vs second half of strip — web half (1.0s)
     FLASH_1S,        // Quick flash every 1s
     FLASH_2S,        // Quick flash every 2s
+    FLASH_SINGLE_3S, // Single-pixel brief flash every 3s (unpaired heartbeat)
     CHASE_FADE,      // Chasing LED with fade trail
     CONTINUOUS,      // Solid color
     DOUBLE_FLASH,    // Double flash pattern
-    WATER_DROP       // Water drop: LEDs 4,5,6 light up, chase left-right, fade out
+    WATER_DROP,      // Water drop: LEDs 4,5,6 light up, chase left-right, fade out
+    TWINKLE          // Soft multi-colour star twinkle (power-up)
 };
 
 /**
@@ -145,12 +148,15 @@ private:
     void updatePulseEffect(uint32_t now);
     void updateRapidPulseEffect(uint32_t now);
     void updateBlinkAlternateEffect(uint32_t now);
+    void updateHalfHalfEffect(uint32_t now);
     void updateFlashEffect(uint32_t now, uint32_t period);
+    void updateSingleFlashEffect(uint32_t now, uint32_t period);
     void updateChaseFadeEffect(uint32_t now);
     void updateContinuousEffect();
     void updateDoubleFlashEffect(uint32_t now);
     void updateWaterDropEffect(uint32_t now);
-    
+    void updateTwinkleEffect(uint32_t now);
+
     // Helper methods
     void setAllPixels(uint8_t r, uint8_t g, uint8_t b);
     void getColorWithBrightness(LedColor color, Brightness brightness, float intensity, uint8_t* r, uint8_t* g, uint8_t* b);

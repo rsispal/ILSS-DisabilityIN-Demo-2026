@@ -28,6 +28,8 @@ public:
 
     bool startAdvertising(const char* name);
     bool stopAdvertising();
+    /** Terminate the active GATT connection (if any). */
+    bool disconnect();
     bool isConnected() const { return connected_; }
     uint16_t connHandle() const { return conn_handle_; }
 
@@ -40,7 +42,8 @@ public:
     /** Register GATT services (called once after begin). */
     bool registerGattServices();
 
-    // Exposed handles for BleTwin feature
+    // Characteristic value handles — filled by NimBLE during ble_gatts_start()
+    // (host sync). Always read via refreshGattHandles() / these members after sync.
     uint16_t handle_cmd_ = 0;
     uint16_t handle_event_ = 0;
     uint16_t handle_status_ = 0;
@@ -51,6 +54,9 @@ public:
     uint16_t handle_swver_ = 0;
     uint16_t handle_brand_ = 0;
     uint16_t handle_batt_ = 0;
+
+    /** Copy NimBLE-assigned GATT handles into members (safe after host sync). */
+    void refreshGattHandles();
 
     bool log_notify_enabled_ = false;
     bool event_notify_enabled_ = false;
@@ -63,7 +69,7 @@ public:
     char sw_version_[32] = "0.1.0";
     uint8_t brand_ = 1;
     uint8_t battery_ = 100;
-    uint8_t status_bytes_[6]{};
+    uint8_t status_bytes_[7]{};
 
     static BluetoothLowLevelDriver* instance() { return s_instance; }
 

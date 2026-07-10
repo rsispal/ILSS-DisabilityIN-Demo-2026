@@ -30,13 +30,14 @@ See **[docs/PROVISIONING.md](docs/PROVISIONING.md)** for when to re-run, flags, 
 ## Boot flow
 
 1. Init NVS, USB serial logger, LED boot cue
-2. **5 second USB CLI window** — press any key for configure / hardware test / status / NVS reset
-3. Start `DigitalTwinApplication` — advertise BLE, run indication controller, sync with web
+2. **2 second USB CLI window** — press any key for configure / hardware test / status / NVS reset
+3. Power-up cue (star twinkle + soft haptics + ascending beeps), then `DigitalTwinApplication`
 
 ## Docs
 
 - [docs/BLE_GATT.md](docs/BLE_GATT.md) — GATT services & characteristics
 - [docs/PACKET_PROTOCOL.md](docs/PACKET_PROTOCOL.md) — packed bidirectional frames
+- [docs/STATE_MACHINE.md](docs/STATE_MACHINE.md) — link/indication state machine + heartbeat
 - [docs/PAIRING.md](docs/PAIRING.md) — pairing, secrets, encryption
 - [docs/PROVISIONING.md](docs/PROVISIONING.md) — `ble_prov` / `provision-lanyard` usage
 

@@ -36,7 +36,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.3.3
+    version: 5.5.3
 direct_dependencies:
 - espressif/button
 - espressif/led_strip

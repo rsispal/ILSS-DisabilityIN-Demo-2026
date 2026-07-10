@@ -13,7 +13,8 @@ IndicationController::IndicationController(Logger* logger, State* state, LowLeve
 }
 
 bool IndicationController::begin() {
-    goIdle();
+    current_ = ilss::TwinState::idle();
+    link_mode_ = LinkLedMode::Unpaired;
     return true;
 }
 
@@ -23,10 +24,70 @@ uint32_t IndicationController::nowMs() {
 
 void IndicationController::goIdle() {
     current_ = ilss::TwinState::idle();
-    driveLed(current_);
-    if (buzzer_) buzzer_->requestStop();
+    if (buzzer_) buzzer_->stop();
     if (lowLevel_) lowLevel_->get_haptics().stop();
     haptic_period_ms_ = 0;
+    connected_flash_until_ms_ = 0;
+    // Only paint idle green when already in Connected mode; otherwise
+    // leave Unpaired/Pairing link cues alone (caller switches link mode).
+    if (link_mode_ == LinkLedMode::Connected) {
+        driveLed(current_);
+    }
+}
+
+void IndicationController::standDownToUnpaired() {
+    logger_->LOGI(TAG, "Stand-down → unpaired (clear alerts, stop indications)");
+    current_ = ilss::TwinState::idle();
+    haptic_period_ms_ = 0;
+    connected_flash_until_ms_ = 0;
+    link_mode_ = LinkLedMode::Unpaired;
+
+    if (buzzer_) {
+        buzzer_->requestStop();
+        buzzer_->stop();
+    }
+    if (lowLevel_) {
+        lowLevel_->get_haptics().stop();
+    }
+    applyLinkLed();
+}
+
+void IndicationController::setLinkLedMode(LinkLedMode mode) {
+    link_mode_ = mode;
+    connected_flash_until_ms_ = 0;
+    if (mode == LinkLedMode::Connected) {
+        // Keep whatever twin state is current (usually idle at pair_ok).
+        resumeAfterLinkCue();
+        return;
+    }
+    applyLinkLed();
+}
+
+void IndicationController::showConnectedFlash() {
+    if (!rgbLed_ || !state_->getEnableLedIndications()) return;
+    link_mode_ = LinkLedMode::Connected;
+    connected_flash_until_ms_ = nowMs() + 450;
+    // Brief all-green flash, then process() restores idle at 40%.
+    rgbLed_->queueEffect(LedEffect::CONTINUOUS, LedColor::GREEN, Brightness::B100, 450);
+    logger_->LOGI(TAG, "Connected flash (green)");
+}
+
+void IndicationController::applyLinkLed() {
+    if (!rgbLed_ || !state_->getEnableLedIndications()) return;
+    switch (link_mode_) {
+        case LinkLedMode::Unpaired:
+            rgbLed_->queueEffect(LedEffect::FLASH_SINGLE_3S, LedColor::BLUE, Brightness::B60, 0);
+            break;
+        case LinkLedMode::Pairing:
+            rgbLed_->queueEffect(LedEffect::CHASE_FADE, LedColor::BLUE, Brightness::B80, 0);
+            break;
+        case LinkLedMode::Connected:
+            break;
+    }
+}
+
+void IndicationController::resumeAfterLinkCue() {
+    driveLed(current_);
 }
 
 bool IndicationController::apply(const ilss::TwinState& desired, ilss::TwinNakReason* reason) {
@@ -53,6 +114,11 @@ bool IndicationController::apply(const ilss::TwinState& desired, ilss::TwinNakRe
     }
 
     current_ = desired;
+    connected_flash_until_ms_ = 0;
+    // Twin commands imply a live session — show the commanded indications.
+    if (link_mode_ != LinkLedMode::Connected) {
+        link_mode_ = LinkLedMode::Connected;
+    }
     driveLed(current_);
     driveBuzzer(current_);
     driveHaptic(current_);
@@ -66,6 +132,10 @@ bool IndicationController::apply(const ilss::TwinState& desired, ilss::TwinNakRe
 
 void IndicationController::process() {
     updateHapticPulse();
+    if (connected_flash_until_ms_ != 0 && nowMs() >= connected_flash_until_ms_) {
+        connected_flash_until_ms_ = 0;
+        resumeAfterLinkCue();
+    }
 }
 
 void IndicationController::driveLed(const ilss::TwinState& s) {
@@ -85,53 +155,81 @@ void IndicationController::driveLed(const ilss::TwinState& s) {
     LedEffect effect = LedEffect::CONTINUOUS;
     switch (s.led) {
         case ilss::TwinLed::Solid: effect = LedEffect::CONTINUOUS; break;
-        case ilss::TwinLed::Flash: effect = LedEffect::FLASH_1S; break;  // retuned period in RGBLED for 1.5s web flash
-        case ilss::TwinLed::Pulse: effect = LedEffect::PULSE; break;     // 1500ms
+        case ilss::TwinLed::Flash: effect = LedEffect::FLASH_1S; break;
+        case ilss::TwinLed::Pulse: effect = LedEffect::PULSE; break;
         case ilss::TwinLed::Double: effect = LedEffect::DOUBLE_FLASH; break;
         case ilss::TwinLed::Alt: effect = LedEffect::BLINK_ALTERNATE; break;
-        case ilss::TwinLed::Half: effect = LedEffect::BLINK_ALTERNATE; break;
+        case ilss::TwinLed::Half: effect = LedEffect::HALF_HALF; break;
         case ilss::TwinLed::Chase: effect = LedEffect::CHASE_FADE; break;
         case ilss::TwinLed::Off: effect = LedEffect::OFF; break;
     }
 
-    if (effect == LedEffect::OFF) {
+    // Prefer twin brightness (0–100 /10). Idle default is 40% when unset/legacy.
+    uint8_t pct = s.brightness;
+    if (pct > 100) pct = 100;
+    pct = static_cast<uint8_t>((pct / 10) * 10);
+
+    const bool idle_green =
+        s.alert == ilss::TwinAlert::None &&
+        s.color == ilss::TwinColor::Green &&
+        s.led == ilss::TwinLed::Solid &&
+        s.haptic == ilss::TwinHaptic::Off &&
+        (s.buzzer == ilss::TwinBuzzer::Silent || s.buzzer == ilss::TwinBuzzer::Off) &&
+        (s.flags & ilss::TWIN_FLAG_ADVANCED) == 0;
+
+    if (idle_green && pct == 0) pct = 40;
+    if (pct == 0 || effect == LedEffect::OFF || s.led == ilss::TwinLed::Off) {
         rgbLed_->stopEffect();
-    } else {
-        rgbLed_->queueEffect(effect, color, Brightness::B100, 0);
+        return;
     }
+
+    // Brightness enum is 5% steps: B5=0 … B100=19 → index = pct/5 - 1
+    const int idx = static_cast<int>(pct / 5) - 1;
+    Brightness brightness = static_cast<Brightness>(idx < 0 ? 0 : (idx > 19 ? 19 : idx));
+
+    rgbLed_->queueEffect(effect, color, brightness, 0);
 }
 
 void IndicationController::driveBuzzer(const ilss::TwinState& s) {
     if (!buzzer_ || !state_->getEnableBuzzer()) return;
-    buzzer_->requestStop();
 
     switch (s.buzzer) {
         case ilss::TwinBuzzer::Silent:
         case ilss::TwinBuzzer::Off:
+            // Hard stop: clear pending queues + silence PWM (requestStop alone is not enough).
+            buzzer_->stop();
             break;
         case ilss::TwinBuzzer::Code3Sweep:
-            // Web: 4s macro with 3x 0.5s bursts — cycles=1 plays one Code-3 group; re-queue via process if needed
+            buzzer_->requestStop();
             buzzer_->queueCode3Sweep(2700, 3500, 0);
             break;
         case ilss::TwinBuzzer::Code3Siren:
+            buzzer_->requestStop();
             buzzer_->queueCode3Siren(2700, 3500, 0);
             break;
         case ilss::TwinBuzzer::Code3Beep:
+            buzzer_->requestStop();
             buzzer_->queueCode3Temporal(3000, 0);
             break;
         case ilss::TwinBuzzer::Alternating:
-            buzzer_->queueAlternating(800, 970, 0);
+            // Match web ilssAudio: 1000 Hz → 740 Hz, 250 ms each (500 ms cycle).
+            buzzer_->requestStop();
+            buzzer_->queueAlternating(1000, 740, 0);
             break;
         case ilss::TwinBuzzer::BsSweep:
+            buzzer_->requestStop();
             buzzer_->queueMediumSweep(800, 970, 4);
             break;
         case ilss::TwinBuzzer::BsFastSweep:
+            buzzer_->requestStop();
             buzzer_->queueMediumSweep(800, 970, 2);
             break;
         case ilss::TwinBuzzer::LfBuzz:
+            buzzer_->requestStop();
             buzzer_->queueLFBuzz(800, 970, 100);
             break;
         case ilss::TwinBuzzer::Siren:
+            buzzer_->requestStop();
             buzzer_->queueSiren(2700, 3500, 0);
             break;
     }
@@ -143,30 +241,38 @@ void IndicationController::driveHaptic(const ilss::TwinState& s) {
     hap.stop();
     last_haptic_ms_ = nowMs();
 
+    // DRV2605L ROM library (ERM lib 1) — TI waveform IDs.
+    // haptic_period_ms_ == 0 → one-shot (no re-trigger). Non-zero → firmware loop.
     switch (s.haptic) {
         case ilss::TwinHaptic::Off:
             haptic_period_ms_ = 0;
             break;
-        case ilss::TwinHaptic::Continuous:
-            // Fire: frequent short buzz
-            hap.play_pattern(14);
-            haptic_period_ms_ = 50;
-            break;
-        case ilss::TwinHaptic::Pulse2:
-            // Personal: ~1.4s double pulse feel
-            hap.play_pattern(118);
-            haptic_period_ms_ = 1400;
-            break;
-        case ilss::TwinHaptic::Pulse1:
-            hap.play_pattern(118);
-            haptic_period_ms_ = 1400;
-            break;
-        case ilss::TwinHaptic::Solid:
-            hap.play_pattern(14);
-            haptic_period_ms_ = 70;
-            break;
         case ilss::TwinHaptic::Click:
-            hap.play_pattern(1);
+            hap.play_pattern(1);   // Strong Click – 100% (one-shot)
+            haptic_period_ms_ = 0;
+            break;
+        case ilss::TwinHaptic::ShortPulse:
+            hap.play_pattern(4);   // Sharp Click – 100% (one-shot)
+            haptic_period_ms_ = 0;
+            break;
+        case ilss::TwinHaptic::LongPulse:
+            hap.play_pattern(47);  // Buzz 1 – 100% (one-shot)
+            haptic_period_ms_ = 0;
+            break;
+        case ilss::TwinHaptic::ShortPulses:
+            hap.play_pattern(10);  // Double Click – 100% (firmware-looped)
+            haptic_period_ms_ = 700;
+            break;
+        case ilss::TwinHaptic::LongPulses:
+            hap.play_pattern(16);  // Alert 1000 ms – 100% (repetitive feel)
+            haptic_period_ms_ = 1400;
+            break;
+        case ilss::TwinHaptic::Continuous:
+            hap.play_pattern(14);  // Strong Buzz – 100%
+            haptic_period_ms_ = 60;
+            break;
+        case ilss::TwinHaptic::Ramp:
+            hap.play_pattern(82);  // Transition Ramp Up Long Smooth 1 – 0→100%
             haptic_period_ms_ = 1600;
             break;
     }
@@ -180,18 +286,20 @@ void IndicationController::updateHapticPulse() {
     auto& hap = lowLevel_->get_haptics();
     hap.stop();
     switch (current_.haptic) {
+        case ilss::TwinHaptic::ShortPulses:
+            hap.play_pattern(10);
+            break;
+        case ilss::TwinHaptic::LongPulses:
+            hap.play_pattern(16);
+            break;
         case ilss::TwinHaptic::Continuous:
-        case ilss::TwinHaptic::Solid:
             hap.play_pattern(14);
             break;
-        case ilss::TwinHaptic::Pulse1:
-        case ilss::TwinHaptic::Pulse2:
-            hap.play_pattern(118);
-            break;
-        case ilss::TwinHaptic::Click:
-            hap.play_pattern(1);
+        case ilss::TwinHaptic::Ramp:
+            hap.play_pattern(82);
             break;
         default:
+            // Click / ShortPulse / LongPulse are one-shot — never re-fire.
             break;
     }
 }

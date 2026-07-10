@@ -720,8 +720,9 @@ void State::addOrUpdateBeacon(const BLEBeacon &beacon)
         beacons.push_back(beacon);
         if (logger != nullptr)
         {
-            logger->LOGD(TAG, "Replaced beacon: %llu -> %llu (rssi:%d)",
-                         removedBeacon.getIdentifier(), beacon.getIdentifier(), beacon.getRssi());
+            logger->LOGD(TAG, "Replaced beacon: %s -> %s (rssi:%d)",
+                         removedBeacon.getIdentifier().c_str(), beacon.getIdentifier().c_str(),
+                         beacon.getRssi());
         }
     }
 }

@@ -2,6 +2,7 @@
 #include "../../utils/Logger.h"
 #include "../../lowlevel/LowLevel.h"
 #include "../../lowlevel/usb/UsbLowLevelDriver.h"
+#include "../../lowlevel/haptics/DRV2605Driver.h"
 #include "../../lowlevel/nvs/NVSLowLevelDriver.h"
 #include "../../state/State.h"
 #include "nvs_flash.h"

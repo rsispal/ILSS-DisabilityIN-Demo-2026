@@ -50,6 +50,10 @@ bool LowLevel::begin() {
         logger->LOGW(TAG, "Haptics initialization failed, continuing with other drivers.");
     }
 
+    if (m_buzzer_driver && !m_buzzer_driver->begin()) {
+        logger->LOGW(TAG, "Buzzer initialization failed, continuing with other drivers.");
+    }
+
     logger->LOGI(TAG, "Low level drivers initialized");
     return true;
 }

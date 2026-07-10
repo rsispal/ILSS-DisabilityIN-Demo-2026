@@ -1,6 +1,7 @@
 #include "BluetoothLowLevelDriver.h"
 #include "../../utils/Logger.h"
 
+#include "esp_log.h"
 #include "esp_nimble_hci.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
@@ -15,6 +16,11 @@
 #include <vector>
 
 BluetoothLowLevelDriver* BluetoothLowLevelDriver::s_instance = nullptr;
+
+// Persistent handle storage NimBLE writes during ble_gatts_start() (host sync).
+// Must outlive GATTS registration — do NOT snapshot into members until sync.
+static uint16_t g_h_serial, g_h_model, g_h_swver, g_h_brand, g_h_batt;
+static uint16_t g_h_cmd, g_h_event, g_h_status, g_h_pairing, g_h_log;
 
 // ILSS UUID helper: xxxxxxxx-494c-5353-4c59-0000000000yy
 static ble_uuid128_t make_uuid(uint8_t svc_byte) {
@@ -68,9 +74,28 @@ void BluetoothLowLevelDriver::onHostReset(int reason) {
     }
 }
 
+void BluetoothLowLevelDriver::refreshGattHandles() {
+    handle_serial_ = g_h_serial;
+    handle_model_ = g_h_model;
+    handle_swver_ = g_h_swver;
+    handle_brand_ = g_h_brand;
+    handle_batt_ = g_h_batt;
+    handle_cmd_ = g_h_cmd;
+    handle_event_ = g_h_event;
+    handle_status_ = g_h_status;
+    handle_pairing_ = g_h_pairing;
+    handle_log_ = g_h_log;
+}
+
 void BluetoothLowLevelDriver::onHostSync() {
     if (!s_instance) return;
-    s_instance->logger_->LOGI(s_instance->TAG, "NimBLE host synced");
+    // ble_gatts_start() has finished — characteristic val_handles are now valid.
+    s_instance->refreshGattHandles();
+    s_instance->logger_->LOGI(s_instance->TAG,
+        "NimBLE host synced (cmd=%u event=%u status=%u pairing=%u log=%u)",
+        s_instance->handle_cmd_, s_instance->handle_event_,
+        s_instance->handle_status_, s_instance->handle_pairing_,
+        s_instance->handle_log_);
 }
 
 int BluetoothLowLevelDriver::gattAccess(uint16_t conn_handle, uint16_t attr_handle,
@@ -129,29 +154,25 @@ int BluetoothLowLevelDriver::gattAccess(uint16_t conn_handle, uint16_t attr_hand
 }
 
 bool BluetoothLowLevelDriver::registerGattServices() {
-    // Persistent handle storage (must outlive GATTS registration)
-    static uint16_t h_serial, h_model, h_swver, h_brand, h_batt;
-    static uint16_t h_cmd, h_event, h_status, h_pairing, h_log;
-
     // Field order must match ble_gatt_chr_def: uuid, access_cb, arg, descriptors, flags, min_key_size, val_handle
     static struct ble_gatt_chr_def meta_chars[] = {
-        { &UUID_SERIAL.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &h_serial },
-        { &UUID_MODEL.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &h_model },
-        { &UUID_SWVER.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &h_swver },
-        { &UUID_BRAND.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &h_brand },
-        { &UUID_BATT.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &h_batt },
+        { &UUID_SERIAL.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &g_h_serial },
+        { &UUID_MODEL.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &g_h_model },
+        { &UUID_SWVER.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &g_h_swver },
+        { &UUID_BRAND.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &g_h_brand },
+        { &UUID_BATT.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_READ, 0, &g_h_batt },
         {0},
     };
 
     static struct ble_gatt_chr_def twin_chars[] = {
         { &UUID_CMD.u, gattAccess, nullptr, nullptr,
-          static_cast<ble_gatt_chr_flags>(BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP), 0, &h_cmd },
-        { &UUID_EVENT.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_NOTIFY, 0, &h_event },
+          static_cast<ble_gatt_chr_flags>(BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP), 0, &g_h_cmd },
+        { &UUID_EVENT.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_NOTIFY, 0, &g_h_event },
         { &UUID_STATUS.u, gattAccess, nullptr, nullptr,
-          static_cast<ble_gatt_chr_flags>(BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY), 0, &h_status },
+          static_cast<ble_gatt_chr_flags>(BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY), 0, &g_h_status },
         { &UUID_PAIRING.u, gattAccess, nullptr, nullptr,
-          static_cast<ble_gatt_chr_flags>(BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY), 0, &h_pairing },
-        { &UUID_LOG.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_NOTIFY, 0, &h_log },
+          static_cast<ble_gatt_chr_flags>(BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY), 0, &g_h_pairing },
+        { &UUID_LOG.u, gattAccess, nullptr, nullptr, BLE_GATT_CHR_F_NOTIFY, 0, &g_h_log },
         {0},
     };
 
@@ -184,17 +205,7 @@ bool BluetoothLowLevelDriver::registerGattServices() {
         logger_->LOGE(TAG, "ble_gatts_add_svcs failed: %d", rc);
         return false;
     }
-
-    handle_serial_ = h_serial;
-    handle_model_ = h_model;
-    handle_swver_ = h_swver;
-    handle_brand_ = h_brand;
-    handle_batt_ = h_batt;
-    handle_cmd_ = h_cmd;
-    handle_event_ = h_event;
-    handle_status_ = h_status;
-    handle_pairing_ = h_pairing;
-    handle_log_ = h_log;
+    // Handles are filled later in onHostSync via refreshGattHandles().
     return true;
 }
 
@@ -205,17 +216,19 @@ int BluetoothLowLevelDriver::onGapEvent(struct ble_gap_event* event, void* /*arg
     switch (event->type) {
         case BLE_GAP_EVENT_CONNECT:
             if (event->connect.status == 0) {
+                self->refreshGattHandles();
                 self->connected_ = true;
                 self->conn_handle_ = event->connect.conn_handle;
-                self->logger_->LOGI(self->TAG, "Connected handle=%u", self->conn_handle_);
+                // ESP_LOG only — never Logger fan-out from NimBLE host task.
+                ESP_LOGI(self->TAG, "Connected handle=%u", self->conn_handle_);
                 if (self->on_conn_) self->on_conn_(true, self->conn_handle_);
             } else {
-                self->logger_->LOGW(self->TAG, "Connect failed status=%d", event->connect.status);
+                ESP_LOGW(self->TAG, "Connect failed status=%d", event->connect.status);
                 self->startAdvertising(self->serial_);
             }
             break;
         case BLE_GAP_EVENT_DISCONNECT:
-            self->logger_->LOGI(self->TAG, "Disconnected reason=%d", event->disconnect.reason);
+            ESP_LOGI(self->TAG, "Disconnected reason=%d", event->disconnect.reason);
             self->connected_ = false;
             self->conn_handle_ = 0xFFFF;
             self->log_notify_enabled_ = false;
@@ -235,11 +248,12 @@ int BluetoothLowLevelDriver::onGapEvent(struct ble_gap_event* event, void* /*arg
             } else if (event->subscribe.attr_handle == self->handle_pairing_) {
                 self->pairing_notify_enabled_ = event->subscribe.cur_notify;
             }
-            self->logger_->LOGI(self->TAG, "Subscribe handle=%u notify=%d",
-                                event->subscribe.attr_handle, event->subscribe.cur_notify);
+            // Use ESP_LOG directly — Logger fan-out must not GATT-notify from host task.
+            ESP_LOGI(self->TAG, "Subscribe handle=%u notify=%d",
+                     event->subscribe.attr_handle, event->subscribe.cur_notify);
             break;
         case BLE_GAP_EVENT_MTU:
-            self->logger_->LOGI(self->TAG, "MTU update %u", event->mtu.value);
+            ESP_LOGI(self->TAG, "MTU update %u", event->mtu.value);
             break;
         default:
             break;
@@ -271,21 +285,39 @@ bool BluetoothLowLevelDriver::begin() {
 bool BluetoothLowLevelDriver::startAdvertising(const char* name) {
     if (name && name[0]) {
         strncpy(serial_, name, sizeof(serial_) - 1);
+        serial_[sizeof(serial_) - 1] = '\0';
     }
     ble_svc_gap_device_name_set(serial_);
 
+    // Chrome / Web Bluetooth often only surfaces a picker name from the *primary*
+    // advertising PDU. Keep flags + local name there (31-byte limit).
+    // Put the 128-bit Twin Control service UUID in the scan response so
+    // requestDevice({ filters: [{ services: [...] }] }) still matches.
     struct ble_hs_adv_fields fields = {};
     fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
     fields.name = reinterpret_cast<uint8_t*>(serial_);
     fields.name_len = strlen(serial_);
-    fields.name_is_complete = 1;
-    fields.uuids128 = const_cast<ble_uuid128_t*>(&UUID_TWIN_SVC);
-    fields.num_uuids128 = 1;
-    fields.uuids128_is_complete = 1;
+    // Flags (3) leave 28 bytes: AD hdr (2) + up to 26 name bytes.
+    if (fields.name_len > 26) {
+        fields.name_len = 26;
+        fields.name_is_complete = 0;
+    } else {
+        fields.name_is_complete = 1;
+    }
 
     int rc = ble_gap_adv_set_fields(&fields);
     if (rc != 0) {
         logger_->LOGE(TAG, "ble_gap_adv_set_fields: %d", rc);
+        return false;
+    }
+
+    struct ble_hs_adv_fields rsp = {};
+    rsp.uuids128 = const_cast<ble_uuid128_t*>(&UUID_TWIN_SVC);
+    rsp.num_uuids128 = 1;
+    rsp.uuids128_is_complete = 1;
+    rc = ble_gap_adv_rsp_set_fields(&rsp);
+    if (rc != 0) {
+        logger_->LOGE(TAG, "ble_gap_adv_rsp_set_fields: %d", rc);
         return false;
     }
 
@@ -307,6 +339,16 @@ bool BluetoothLowLevelDriver::startAdvertising(const char* name) {
 
 bool BluetoothLowLevelDriver::stopAdvertising() {
     ble_gap_adv_stop();
+    return true;
+}
+
+bool BluetoothLowLevelDriver::disconnect() {
+    if (!connected_ || conn_handle_ == 0xFFFF) return false;
+    int rc = ble_gap_terminate(conn_handle_, BLE_ERR_REM_USER_CONN_TERM);
+    if (rc != 0) {
+        ESP_LOGW(TAG, "ble_gap_terminate failed rc=%d", rc);
+        return false;
+    }
     return true;
 }
 

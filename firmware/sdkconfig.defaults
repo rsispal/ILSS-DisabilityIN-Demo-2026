@@ -1,0 +1,2 @@
+# Larger NimBLE host stack — GAP handlers + ATT notify need headroom on ESP32-S3.
+CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE=8192

@@ -142,11 +142,17 @@ void RGBLED::process()
         case LedEffect::BLINK_ALTERNATE:
             updateBlinkAlternateEffect(now);
             break;
+        case LedEffect::HALF_HALF:
+            updateHalfHalfEffect(now);
+            break;
         case LedEffect::FLASH_1S:
             updateFlashEffect(now, 1000);
             break;
         case LedEffect::FLASH_2S:
             updateFlashEffect(now, 2000);
+            break;
+        case LedEffect::FLASH_SINGLE_3S:
+            updateSingleFlashEffect(now, 3000);
             break;
         case LedEffect::CHASE_FADE:
             updateChaseFadeEffect(now);
@@ -159,6 +165,9 @@ void RGBLED::process()
             break;
         case LedEffect::WATER_DROP:
             updateWaterDropEffect(now);
+            break;
+        case LedEffect::TWINKLE:
+            updateTwinkleEffect(now);
             break;
     }
 
@@ -206,12 +215,39 @@ void RGBLED::updateRapidPulseEffect(uint32_t now)
 
 void RGBLED::updateBlinkAlternateEffect(uint32_t now)
 {
-    // On/off toggle - 1 second cycle, 50% duty
-    bool on = (now % 1000) < 500;
-    
-    uint8_t r, g, b;
-    getColorWithBrightness(current_effect.color, current_effect.brightness, on ? 1.0f : 0.0f, &r, &g, &b);
-    setAllPixels(r, g, b);
+    // Web alt: marching dashes, 0.7s period, steps(2) → swap every 350ms.
+    // On a linear strip: odd vs even pixels (spatial alternating segments).
+    const uint32_t period_ms = 700;
+    const bool phase = ((now % period_ms) * 2 / period_ms) != 0;  // 0 or 1
+
+    if (!led_strip) return;
+    for (uint8_t i = 0; i < NUM_PIXELS; i++) {
+        const bool on = ((i % 2) == 0) == !phase;
+        uint8_t r = 0, g = 0, b = 0;
+        if (on) {
+            getColorWithBrightness(current_effect.color, current_effect.brightness, 1.0f, &r, &g, &b);
+        }
+        led_strip_set_pixel(led_strip, i, r, g, b);
+    }
+    led_strip_refresh(led_strip);
+}
+
+void RGBLED::updateHalfHalfEffect(uint32_t now)
+{
+    // Web half: top vs bottom, 1.0s period, 50% duty, off-state opacity ~0.04.
+    const uint32_t period_ms = 1000;
+    const bool first_half_on = (now % period_ms) < (period_ms / 2);
+    const uint8_t mid = NUM_PIXELS / 2;
+
+    if (!led_strip) return;
+    for (uint8_t i = 0; i < NUM_PIXELS; i++) {
+        const bool on = (i < mid) ? first_half_on : !first_half_on;
+        const float intensity = on ? 1.0f : 0.04f;
+        uint8_t r, g, b;
+        getColorWithBrightness(current_effect.color, current_effect.brightness, intensity, &r, &g, &b);
+        led_strip_set_pixel(led_strip, i, r, g, b);
+    }
+    led_strip_refresh(led_strip);
 }
 
 void RGBLED::updateFlashEffect(uint32_t now, uint32_t period)
@@ -224,6 +260,23 @@ void RGBLED::updateFlashEffect(uint32_t now, uint32_t period)
     uint8_t r, g, b;
     getColorWithBrightness(current_effect.color, current_effect.brightness, on ? 1.0f : 0.0f, &r, &g, &b);
     setAllPixels(r, g, b);
+}
+
+void RGBLED::updateSingleFlashEffect(uint32_t now, uint32_t period)
+{
+    // One centre pixel, brief pulse, then dark for the rest of the period.
+    const uint32_t on_ms = 120;
+    const bool on = (now % period) < on_ms;
+    const uint8_t pixel = NUM_PIXELS / 2;
+
+    if (!led_strip) return;
+    led_strip_clear(led_strip);
+    if (on) {
+        uint8_t r, g, b;
+        getColorWithBrightness(current_effect.color, current_effect.brightness, 1.0f, &r, &g, &b);
+        led_strip_set_pixel(led_strip, pixel, r, g, b);
+    }
+    led_strip_refresh(led_strip);
 }
 
 void RGBLED::updateChaseFadeEffect(uint32_t now)
@@ -368,6 +421,46 @@ void RGBLED::updateWaterDropEffect(uint32_t now)
     }
 }
 
+void RGBLED::updateTwinkleEffect(uint32_t now)
+{
+    if (!led_strip) return;
+
+    // Honeywell brand: white + red starfield only.
+    static const LedColor kStarColors[] = { LedColor::WHITE, LedColor::RED };
+    constexpr size_t kNumColors = sizeof(kStarColors) / sizeof(kStarColors[0]);
+
+    const uint32_t elapsed = now - current_effect.start_time;
+    // Fade envelope over the effect duration (default ~1.8s).
+    const uint32_t dur = current_effect.duration > 0 ? current_effect.duration : 1800;
+    float envelope = 1.0f;
+    if (elapsed > dur * 2 / 3) {
+        envelope = 1.0f - static_cast<float>(elapsed - dur * 2 / 3) / static_cast<float>(dur / 3);
+        if (envelope < 0.0f) envelope = 0.0f;
+    } else if (elapsed < 200) {
+        envelope = static_cast<float>(elapsed) / 200.0f;
+    }
+
+    for (uint8_t i = 0; i < NUM_PIXELS; i++) {
+        // Deterministic per-pixel phase so it looks organic without RNG.
+        const float phase = (elapsed * 0.0045f) + (i * 1.7f) + ((i * 37) % 11) * 0.35f;
+        float twinkle = 0.5f + 0.5f * sinf(phase);
+        // Sharpen peaks so most LEDs stay dim (star-like).
+        twinkle = twinkle * twinkle;
+        twinkle *= envelope * 0.7f;
+
+        // Alternate white/red by pixel; slowly swap which set is which.
+        const LedColor c = kStarColors[(i + (elapsed / 400)) % kNumColors];
+        uint8_t r, g, b;
+        getColorWithBrightness(c, current_effect.brightness, twinkle, &r, &g, &b);
+        led_strip_set_pixel(led_strip, i, r, g, b);
+    }
+
+    esp_err_t ret = led_strip_refresh(led_strip);
+    if (ret != ESP_OK) {
+        logger.LOGE(TAG, "Failed to refresh LED strip: %s", esp_err_to_name(ret));
+    }
+}
+
 void RGBLED::setAllPixels(uint8_t r, uint8_t g, uint8_t b)
 {
     if (!led_strip) {
@@ -409,17 +502,17 @@ void RGBLED::getColorWithBrightness(LedColor color, Brightness brightness, float
         // Colors matched to web COLORS palette
         case LedColor::RED:
             *r = static_cast<uint8_t>(255 * intensity);
-            *g = static_cast<uint8_t>(49 * intensity);
-            *b = static_cast<uint8_t>(49 * intensity);
+            *g = static_cast<uint8_t>(0 * intensity);
+            *b = static_cast<uint8_t>(0 * intensity);
             break;
         case LedColor::GREEN:
-            *r = static_cast<uint8_t>(43 * intensity);
-            *g = static_cast<uint8_t>(226 * intensity);
-            *b = static_cast<uint8_t>(122 * intensity);
+            *r = static_cast<uint8_t>(0 * intensity);
+            *g = static_cast<uint8_t>(255 * intensity);
+            *b = static_cast<uint8_t>(0 * intensity);
             break;
         case LedColor::BLUE:
-            *r = static_cast<uint8_t>(56 * intensity);
-            *g = static_cast<uint8_t>(132 * intensity);
+            *r = static_cast<uint8_t>(0 * intensity);
+            *g = static_cast<uint8_t>(0 * intensity);
             *b = static_cast<uint8_t>(255 * intensity);
             break;
         case LedColor::PURPLE:

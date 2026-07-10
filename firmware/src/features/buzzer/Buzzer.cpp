@@ -137,6 +137,19 @@ void Buzzer::startContinuous(uint32_t freq)
     }
 }
 
+void Buzzer::clearPending()
+{
+    pendingSiren.store(0, std::memory_order_relaxed);
+    pendingCode3Temporal.store(0, std::memory_order_relaxed);
+    pendingCode3Sweep.store(0, std::memory_order_relaxed);
+    pendingCode3Siren.store(0, std::memory_order_relaxed);
+    pendingBeep.store(0, std::memory_order_relaxed);
+    pendingTick.store(0, std::memory_order_relaxed);
+    pendingLFBuzz.store(0, std::memory_order_relaxed);
+    pendingMediumSweep.store(0, std::memory_order_relaxed);
+    pendingAlternating.store(0, std::memory_order_relaxed);
+}
+
 void Buzzer::requestStop()
 {
     // Set flag to interrupt any playing pattern immediately
@@ -147,10 +160,13 @@ void Buzzer::stop()
 {
     // Set flag to interrupt any playing pattern
     shouldStop.store(true, std::memory_order_relaxed);
-    
+
+    // Drop any queued patterns so processPending cannot restart after silence.
+    clearPending();
+
     // Stop timer-based patterns
     stopPatternTimer();
-    
+
     if (!lowLevel || !lowLevel->get_buzzer().isReady())
     {
         return;
@@ -263,7 +279,7 @@ void Buzzer::playAlternating(uint32_t low_freq, uint32_t high_freq, uint32_t cyc
                 vTaskDelay(pdMS_TO_TICKS(duration_ms));
             }
         }
-        // Don't stop here for finite cycles - allows seamless looping
+        stopHardware();
     }
 }
 
@@ -313,7 +329,7 @@ void Buzzer::playMediumSweep(uint32_t low_freq, uint32_t high_freq, uint32_t cyc
                 }
             }
         }
-        // Don't stop here for finite cycles - allows seamless looping
+        stopHardware();
     }
 }
 
@@ -374,7 +390,7 @@ void Buzzer::playSiren(uint32_t low_freq, uint32_t high_freq, uint32_t cycles)
                 vTaskDelay(pdMS_TO_TICKS(step_ms));
             }
         }
-        // Don't stop here for finite cycles - allows seamless looping
+        stopHardware();
     }
 }
 
@@ -855,7 +871,7 @@ void Buzzer::playLFBuzz(uint32_t low_freq, uint32_t high_freq, uint32_t cycles)
             elapsed += modulation_ms;
             use_freq1 = !use_freq1;
         }
-        // Don't stop here for finite cycles - allows seamless looping
+        stopHardware();
     }
 }
 

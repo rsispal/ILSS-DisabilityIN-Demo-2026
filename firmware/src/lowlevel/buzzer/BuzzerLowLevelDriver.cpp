@@ -71,6 +71,12 @@ bool BuzzerLowLevelDriver::setPWM(uint32_t frequency_hz, uint32_t duty_cycle_per
         return false;
     }
 
+    // After ledc_stop(), the channel may be idle — restore tone-mode timer if needed.
+    if (speech_mode_)
+    {
+        exitSpeechMode();
+    }
+
     uint32_t period_us = frequencyToPeriodUs(frequency_hz);
     uint32_t pulse_us = frequencyToPulseUs(frequency_hz, duty_cycle_percent);
 
@@ -140,7 +146,14 @@ bool BuzzerLowLevelDriver::stop()
         return false;
     }
 
-    // Set duty cycle to 0% (silent)
+    // If speech mode left the timer at 8-bit / 31.25 kHz, restore tone mode first
+    // so duty math and subsequent setPWM() behave correctly.
+    if (speech_mode_)
+    {
+        exitSpeechMode();
+    }
+
+    // Silence: duty 0, then force the update through.
     esp_err_t ret = ledc_set_duty(LEDC_LOW_SPEED_MODE, ledc_channel_, 0);
     if (ret != ESP_OK)
     {
@@ -154,6 +167,9 @@ bool BuzzerLowLevelDriver::stop()
         logger.LOGE(TAG, "Failed to update duty for stop: %s", esp_err_to_name(ret));
         return false;
     }
+
+    // Belt-and-braces: some ESP-IDF paths leave residual output after duty=0 alone.
+    (void)ledc_stop(LEDC_LOW_SPEED_MODE, ledc_channel_, 0);
 
     return true;
 }

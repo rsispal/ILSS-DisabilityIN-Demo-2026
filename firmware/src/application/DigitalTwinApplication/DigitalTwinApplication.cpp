@@ -5,6 +5,7 @@
 #include "../../features/side-buttons/SideButtons.h"
 #include "../../features/ble-twin/BleTwin.h"
 #include "../../lowlevel/LowLevel.h"
+#include "../../lowlevel/bluetooth/BluetoothLowLevelDriver.h"
 #include "../../state/State.h"
 #include "../../protocol/TwinState.h"
 #include "../../application/Hardware.h"
@@ -77,9 +78,34 @@ void DigitalTwinApplication::onBothHold() {
     }
 }
 
+void DigitalTwinApplication::onSidePress(uint8_t side) {
+    if (!bleTwin_) return;
+    bleTwin_->emitButtonEvent(side, ilss::BUTTON_ACTION_PRESS);
+    logger_->LOGI(TAG, "Side button press → UI cue (%s)",
+                  side == ilss::BUTTON_SIDE_LEFT ? "left" : "right");
+}
+
 void DigitalTwinApplication::onBleDisconnected() {
-    logger_->LOGI(TAG, "BLE disconnected — returning to idle");
-    if (indications_) indications_->goIdle();
+    logger_->LOGI(TAG, "BLE disconnected — stand down to unpaired ready");
+    if (indications_) {
+        indications_->standDownToUnpaired();
+    }
+    if (bleTwin_) bleTwin_->publishStatus(ilss::TwinState::idle());
+}
+
+void DigitalTwinApplication::onBleConnecting() {
+    logger_->LOGI(TAG, "BLE connected — pairing chase");
+    if (indications_) {
+        indications_->setLinkLedMode(IndicationController::LinkLedMode::Pairing);
+    }
+}
+
+void DigitalTwinApplication::onBlePaired() {
+    logger_->LOGI(TAG, "BLE paired — connected flash then idle");
+    if (indications_) {
+        indications_->goIdle();
+        indications_->showConnectedFlash();
+    }
     if (bleTwin_) bleTwin_->publishStatus(ilss::TwinState::idle());
 }
 
@@ -92,8 +118,17 @@ void DigitalTwinApplication::eventLoop() {
                 case AppEventType::ButtonBothHold:
                     onBothHold();
                     break;
+                case AppEventType::ButtonSidePress:
+                    onSidePress(ev.side);
+                    break;
                 case AppEventType::BleDisconnected:
                     onBleDisconnected();
+                    break;
+                case AppEventType::BleConnecting:
+                    onBleConnecting();
+                    break;
+                case AppEventType::BlePaired:
+                    onBlePaired();
                     break;
                 default:
                     break;
@@ -117,7 +152,7 @@ void DigitalTwinApplication::begin() {
 
     rgbLed_ = new RGBLED(state_, lowLevel_);
     rgbLed_->begin();
-    rgbLed_->queueEffect(LedEffect::CHASE_FADE, LedColor::WHITE, Brightness::B50, 2000);
+    // Power-up flourish already ran in main; go straight to unpaired ready.
 
     buzzer_ = new Buzzer(state_, lowLevel_);
     buzzer_->begin();
@@ -129,7 +164,16 @@ void DigitalTwinApplication::begin() {
     sideButtons_->begin();
     sideButtons_->setEventCallback([this](ButtonEvent event) {
         if (event == ButtonEvent::BOTH_HOLD) {
-            AppEvent ev{AppEventType::ButtonBothHold};
+            AppEvent ev{AppEventType::ButtonBothHold, 0};
+            if (event_queue_) xQueueSend(event_queue_, &ev, 0);
+            return;
+        }
+        // Momentary tap → web twin illuminates the matching side button.
+        if (event == ButtonEvent::LEFT_PRESS) {
+            AppEvent ev{AppEventType::ButtonSidePress, ilss::BUTTON_SIDE_LEFT};
+            if (event_queue_) xQueueSend(event_queue_, &ev, 0);
+        } else if (event == ButtonEvent::RIGHT_PRESS) {
+            AppEvent ev{AppEventType::ButtonSidePress, ilss::BUTTON_SIDE_RIGHT};
             if (event_queue_) xQueueSend(event_queue_, &ev, 0);
         }
     });
@@ -142,18 +186,33 @@ void DigitalTwinApplication::begin() {
         AppEvent ev{AppEventType::BleDisconnected};
         if (event_queue_) xQueueSend(event_queue_, &ev, 0);
     });
+    bleTwin_->setConnectingHandler([this]() {
+        AppEvent ev{AppEventType::BleConnecting};
+        if (event_queue_) xQueueSend(event_queue_, &ev, 0);
+    });
+    bleTwin_->setPairedHandler([this]() {
+        AppEvent ev{AppEventType::BlePaired};
+        if (event_queue_) xQueueSend(event_queue_, &ev, 0);
+    });
 
     logger_->setBleLogSink([this](const char* line) {
         if (bleTwin_) bleTwin_->notifyLogLine(line);
     });
 
     char adv[32];
-    snprintf(adv, sizeof(adv), "ILSS-LY-%.4s", state_->getDeviceId().c_str());
+    // Prefer a short stable suffix from the end of the device UUID (more unique than
+    // the time-based UUIDv7 prefix). Example: ILSS-LY-ac6f
+    const std::string id = state_->getDeviceId();
+    std::string suffix = "0000";
+    if (id.size() >= 4) {
+        suffix = id.substr(id.size() - 4);
+    }
+    snprintf(adv, sizeof(adv), "ILSS-LY-%s", suffix.c_str());
     bleTwin_->begin(adv);
 
-    // Idle green after boot chase
-    vTaskDelay(pdMS_TO_TICKS(2100));
+    // Unpaired ready after power-up (goIdle alone would leave link mode).
     indications_->goIdle();
+    indications_->setLinkLedMode(IndicationController::LinkLedMode::Unpaired);
     bleTwin_->publishStatus(indications_->current());
 
     initTasks();

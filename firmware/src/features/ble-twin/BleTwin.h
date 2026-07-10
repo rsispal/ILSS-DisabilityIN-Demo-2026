@@ -1,10 +1,14 @@
 #pragma once
 
+#include "../../utils/Logger.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+
 #include <cstdint>
 #include <functional>
+
 #include "../../protocol/PacketCodec.h"
 #include "../../protocol/TwinState.h"
-#include "../../utils/Logger.h"
 
 class BluetoothLowLevelDriver;
 class IndicationController;
@@ -19,23 +23,36 @@ class BleTwin {
 public:
     using TwinStateHandler = std::function<bool(const ilss::TwinState& desired, ilss::TwinNakReason* reason)>;
     using DisconnectHandler = std::function<void()>;
+    using LinkHandler = std::function<void()>;
 
     BleTwin(Logger* logger, BluetoothLowLevelDriver* ble, IndicationController* indications, State* state);
+    ~BleTwin();
 
     bool begin(const char* adv_name);
-    void process();  // drain log queue, etc.
+    /** Drain deferred TX (log lines). Call from app task — never from NimBLE host. */
+    void process();
 
     void setDeviceUuid(const uint8_t uuid[16]);
     void setMasterUuid(const uint8_t uuid[16]);
     void setTwinStateHandler(TwinStateHandler h) { on_twin_ = std::move(h); }
     void setDisconnectHandler(DisconnectHandler h) { on_disconnect_ = std::move(h); }
+    void setConnectingHandler(LinkHandler h) { on_connecting_ = std::move(h); }
+    void setPairedHandler(LinkHandler h) { on_paired_ = std::move(h); }
 
     void publishStatus(const ilss::TwinState& state);
     void emitTwinEvent(const ilss::TwinState& state);
+    /** Momentary side-button cue for the web twin (left/right press). */
+    void emitButtonEvent(uint8_t side, uint8_t action = ilss::BUTTON_ACTION_PRESS);
+    /** Device→web alive poll (CMD HEARTBEAT on Event notify). */
+    void emitHeartbeatPoll();
+    /** Queue a log line for BLE notify from process() (safe from any context). */
     void notifyLogLine(const char* line);
 
     bool isPaired() const { return paired_; }
     bool isConnected() const;
+
+    static constexpr uint32_t kHeartbeatIntervalMs = 10000;
+    static constexpr uint32_t kHeartbeatAckTimeoutMs = 4000;
 
     /** Pairing: op 0x01=pair_req, 0x02=pair_ok, 0x03=unpair, 0x10=dh_pub */
     void handlePairingWrite(const uint8_t* data, size_t len);
@@ -45,12 +62,22 @@ public:
     const uint8_t* sessionKey() const { return session_key_; }
 
 private:
+    static constexpr size_t kLogLineMax = 180;
+    static constexpr size_t kLogQueueDepth = 16;
+
+    struct LogLine {
+        uint16_t len;
+        char text[kLogLineMax];
+    };
+
     Logger* logger_;
     BluetoothLowLevelDriver* ble_;
     IndicationController* indications_;
     State* state_;
     TwinStateHandler on_twin_;
     DisconnectHandler on_disconnect_;
+    LinkHandler on_connecting_;
+    LinkHandler on_paired_;
 
     uint8_t device_uuid_[16]{};
     uint8_t master_uuid_[16]{};
@@ -61,10 +88,22 @@ private:
     uint8_t factory_secret_[32]{};
     bool has_factory_secret_ = false;
 
+    QueueHandle_t log_queue_ = nullptr;
+    bool status_cccd_seen_ = false;
+
+    uint32_t last_hb_tx_ms_ = 0;
+    uint32_t hb_await_since_ms_ = 0;
+    bool awaiting_hb_ack_ = false;
+    uint16_t pending_hb_msg_id_ = 0;
+
     void onWrite(uint16_t handle, const uint8_t* data, size_t len);
     void onConnection(bool connected, uint16_t conn);
     void handleCommandPacket(const ilss::Packet& pkt);
+    void handleInboundAck(const ilss::Packet& pkt);
+    void tickHeartbeat();
+    void failHeartbeat(const char* why);
     void sendAck(const ilss::Packet& req, bool nak, uint8_t reason = 0);
     void sendPacket(ilss::Packet& pkt, bool as_event);
     bool loadProvisioning();
+    static uint32_t nowMs();
 };

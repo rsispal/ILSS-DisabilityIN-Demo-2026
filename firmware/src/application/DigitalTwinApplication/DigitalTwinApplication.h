@@ -39,18 +39,25 @@ private:
 
     enum class AppEventType : uint8_t {
         ButtonBothHold,
+        ButtonSidePress,
         BleDisconnected,
+        BleConnecting,
+        BlePaired,
         Tick,
     };
 
     struct AppEvent {
         AppEventType type;
+        uint8_t side = 0;  // BUTTON_SIDE_LEFT / RIGHT for ButtonSidePress
     };
 
     void initTasks();
     void eventLoop();
     void onBothHold();
+    void onSidePress(uint8_t side);
     void onBleDisconnected();
+    void onBleConnecting();
+    void onBlePaired();
 
     static void ledTaskTrampoline(void* arg);
     static void buzzerTaskTrampoline(void* arg);

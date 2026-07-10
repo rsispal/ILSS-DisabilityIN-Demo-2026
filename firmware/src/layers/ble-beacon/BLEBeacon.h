@@ -7,11 +7,15 @@
 class BLEBeacon {
 public:
     std::string getId() const { return id_; }
+    std::string getIdentifier() const { return id_; }
     int8_t getRssi() const { return rssi_; }
     uint32_t getLastSeenMs() const { return last_seen_ms_; }
+    uint32_t getLastSeenTimestamp() const { return last_seen_ms_; }
+
     void setId(const std::string& id) { id_ = id; }
     void setRssi(int8_t rssi) { rssi_ = rssi; }
     void setLastSeenMs(uint32_t ms) { last_seen_ms_ = ms; }
+    void updateRssi(int8_t rssi) { rssi_ = rssi; }
 
 private:
     std::string id_;

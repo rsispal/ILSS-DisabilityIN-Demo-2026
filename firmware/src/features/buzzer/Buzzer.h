@@ -83,7 +83,10 @@ private:
 
     // Internal play method
     void play(uint32_t freq, uint32_t duration_ms);
-    
+
+    // Drop queued patterns (used by stop so silence cannot be undone by a stale queue)
+    void clearPending();
+
     // Stop hardware without setting shouldStop flag (for internal use in patterns)
     void stopHardware();
 
