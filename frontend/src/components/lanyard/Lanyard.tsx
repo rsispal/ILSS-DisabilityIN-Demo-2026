@@ -6,6 +6,7 @@ interface LanyardProps {
   ledRgb: string;
   ledPattern: LedPattern;
   ledOn: boolean;
+  ledBrightness?: number;
   hapticPattern: HapticPattern;
   buzzerActive: boolean;
   buzzerDur: number;
@@ -13,6 +14,8 @@ interface LanyardProps {
   swingEnabled: boolean;
   introLedWait?: boolean;
   introPulse?: boolean;
+  /** Brief green LED pulse when a heartbeat poll is received. */
+  heartbeatPulse?: boolean;
   onPressPersonal: () => void;
   onPressFire: () => void;
 }
@@ -21,6 +24,7 @@ export function Lanyard({
   ledRgb,
   ledPattern,
   ledOn,
+  ledBrightness = 100,
   hapticPattern,
   buzzerActive,
   buzzerDur,
@@ -28,6 +32,7 @@ export function Lanyard({
   swingEnabled,
   introLedWait = false,
   introPulse = false,
+  heartbeatPulse = false,
   onPressPersonal,
   onPressFire: _onPressFire,
 }: LanyardProps) {
@@ -37,20 +42,29 @@ export function Lanyard({
 
   const { feedMomentum, clearMomentum } = useSwingPhysics(swingEnabled, swayRef);
 
-  const displayLedPattern = introLedWait ? 'off' : ledPattern;
-  const displayLedOn = introLedWait || introPulse ? false : ledOn;
+  const displayLedPattern = introLedWait ? 'off' : heartbeatPulse ? 'solid' : ledPattern;
+  const displayLedOn =
+    introLedWait || introPulse
+      ? false
+      : heartbeatPulse
+        ? true
+        : ledOn && ledBrightness > 0;
+  const displayLedRgb = heartbeatPulse ? '0, 220, 48' : ledRgb;
+  const displayLedBright = heartbeatPulse ? 1 : Math.max(0, Math.min(1, ledBrightness / 100));
 
   const sceneClasses = [
     'scene',
     buzzerActive ? 'buzz-on' : '',
     introPulse ? 'intro-pulse' : '',
+    heartbeatPulse ? 'hb-pulse' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   const sceneStyle = {
-    '--led-rgb': ledRgb,
+    '--led-rgb': displayLedRgb,
     '--led-on': displayLedOn ? 1 : 0,
+    '--led-bright': displayLedBright,
     '--buzz-dur': buzzerDur + 's',
   } as CSSProperties;
 
@@ -146,13 +160,21 @@ export function Lanyard({
             <button
               type="button"
               ref={leftRef}
-              className={'side-btn left' + (pressed === 'personal' ? ' press' : '')}
+              className={
+                'side-btn left' +
+                (pressed === 'personal' || pressed === 'left' ? ' press' : '') +
+                (pressed === 'left' ? ' lit' : '')
+              }
               aria-label="Personal alert button"
             />
             <button
               type="button"
               ref={rightRef}
-              className={'side-btn right' + (pressed === 'personal' ? ' press' : '')}
+              className={
+                'side-btn right' +
+                (pressed === 'personal' || pressed === 'right' ? ' press' : '') +
+                (pressed === 'right' ? ' lit' : '')
+              }
               aria-label="Personal alert button"
             />
             <div className="eq">

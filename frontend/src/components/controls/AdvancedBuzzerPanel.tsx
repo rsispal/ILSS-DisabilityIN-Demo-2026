@@ -25,7 +25,7 @@ export function AdvancedBuzzerPanel({
       </div>
       <Chips
         items={BUZZER_PATTERNS}
-        value={st.buzzer}
+        value={BUZZER_PATTERNS.some((p) => p.v === st.buzzer) ? st.buzzer : null}
         onChange={(v) => onChange({ buzzer: v as BuzzerPattern })}
       />
       <div className="sound-toggle" style={{ marginTop: 14 }}>

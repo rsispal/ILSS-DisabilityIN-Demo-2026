@@ -72,9 +72,9 @@ export function ExperimentsModal({ flags, setFlag, onClose }: ExperimentsModalPr
           <div className="flag-sep" />
           <FlagRow
             id="flag-device-logs"
-            title="Device logs sidebar"
-            badge="Secret"
-            desc="Show a live sidebar of firmware log lines streamed over the BLE Log characteristic after pairing."
+            title="BLE / device logs sidebar"
+            badge="Debug"
+            desc="Live sidebar of client GATT steps plus firmware Log notifies (UUID_LOG) after pairing."
             checked={flags.deviceLogs}
             onChange={(v) => setFlag('deviceLogs', v)}
           />

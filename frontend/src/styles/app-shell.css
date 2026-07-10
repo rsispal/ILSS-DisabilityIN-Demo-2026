@@ -16,7 +16,7 @@
 
   /* LED channel colours (rgb triplets) */
   --led-red: 255, 49, 49;
-  --led-green: 43, 226, 122;
+  --led-green: 0, 220, 48;
   --led-blue: 56, 132, 255;
   --led-teal: 22, 224, 208;
   --led-purple: 178, 84, 255;

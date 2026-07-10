@@ -4,6 +4,7 @@ import { AdvancedLedPanel } from '@/components/controls/AdvancedLedPanel';
 import { AdvancedHapticsPanel } from '@/components/controls/AdvancedHapticsPanel';
 import { AdvancedBuzzerPanel } from '@/components/controls/AdvancedBuzzerPanel';
 import { DeviceTelemetry } from '@/components/controls/DeviceTelemetry';
+import { LanyardDeviceSummary } from '@/components/ble/LanyardDeviceSummary';
 import { Button } from '@/ds/forge';
 import { useBottomSheet } from '@/hooks/useBottomSheet';
 import {
@@ -13,6 +14,7 @@ import {
   StopCircleIcon,
   ChevIcon,
   CloseIcon,
+  ResetIcon,
 } from '@/lib/constants/icons';
 import type { AlertLevel, DeviceState } from '@/types/simulator';
 
@@ -26,6 +28,10 @@ interface MobileControlsSheetProps {
   onClearPersonal: () => void;
   onChange: (patch: Partial<DeviceState>) => void;
   onMutedChange: (muted: boolean) => void;
+  customActive?: boolean;
+  customResetSeconds?: number;
+  customRemainingMs?: number;
+  onResetCustom?: () => void;
   onOpenExperiments: () => void;
 }
 
@@ -39,6 +45,10 @@ export function MobileControlsSheet({
   onClearPersonal,
   onChange,
   onMutedChange,
+  customActive = false,
+  customResetSeconds = 0,
+  customRemainingMs = 0,
+  onResetCustom,
   onOpenExperiments,
 }: MobileControlsSheetProps) {
   const {
@@ -147,6 +157,27 @@ export function MobileControlsSheet({
             </div>
           </div>
 
+          {customActive && onResetCustom && (
+            <div className="custom-reset-card" role="status" style={{ margin: '0 0 12px' }}>
+              <div className="custom-reset-meta">
+                <div className="custom-reset-title">Custom pattern running</div>
+                <div className="custom-reset-sub">
+                  Auto-resets in <strong>{customResetSeconds}s</strong>
+                </div>
+                <div
+                  className="custom-reset-bar"
+                  style={{
+                    ['--reset-pct' as string]: `${Math.max(0, Math.min(100, (customRemainingMs / 30000) * 100))}%`,
+                  }}
+                />
+              </div>
+              <button type="button" className="custom-reset-btn" onClick={onResetCustom}>
+                <ResetIcon style={{ width: 15, height: 15 }} />
+                Reset
+              </button>
+            </div>
+          )}
+
           <button
             type="button"
             className="mobile-sheet-advanced-toggle"
@@ -161,6 +192,7 @@ export function MobileControlsSheet({
           {advancedOpen && (
             <div className="mobile-sheet-advanced">
               <DeviceTelemetry st={st} muted={muted} />
+              <LanyardDeviceSummary className="ble-device-table--rail" />
               <AdvancedLedPanel st={st} onChange={onChange} />
               <AdvancedHapticsPanel st={st} onChange={onChange} />
               <AdvancedBuzzerPanel

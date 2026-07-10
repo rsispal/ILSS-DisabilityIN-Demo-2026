@@ -26,7 +26,7 @@ export function DeviceTelemetry({ st, muted }: DeviceTelemetryProps) {
                   ? '#ff6a60'
                   : st.alert === 'personal'
                     ? '#c98bff'
-                    : '#2be27a',
+                    : '#00dc30',
             }}
           >
             {st.alert === 'fire' ? 'Fire' : st.alert === 'personal' ? 'Alert' : 'Standby'}
@@ -52,6 +52,12 @@ export function DeviceTelemetry({ st, muted }: DeviceTelemetryProps) {
           </div>
         </div>
         <div className="hud-cell">
+          <div className="hud-label">Brightness</div>
+          <div className="hud-value" style={{ fontSize: 13 }}>
+            {st.brightness ?? 100}%
+          </div>
+        </div>
+        <div className="hud-cell">
           <div className="hud-label">Haptic</div>
           <div className="hud-value" style={{ fontSize: 13 }}>
             {HAPTIC_LABELS[st.haptic]}
@@ -65,7 +71,7 @@ export function DeviceTelemetry({ st, muted }: DeviceTelemetryProps) {
               style={{
                 fontSize: 10.5,
                 letterSpacing: 1,
-                color: buzzerActive && !muted ? '#2be27a' : '#57628a',
+                color: buzzerActive && !muted ? '#00dc30' : '#57628a',
               }}
             >
               {muted ? 'MUTED' : buzzerActive ? 'SOUNDING' : 'QUIET'}

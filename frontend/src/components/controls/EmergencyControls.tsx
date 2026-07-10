@@ -5,6 +5,7 @@ import {
   FireIcon,
   ClearIcon,
   StopCircleIcon,
+  ResetIcon,
 } from '@/lib/constants/icons';
 import type { AlertLevel } from '@/types/simulator';
 
@@ -14,6 +15,10 @@ interface EmergencyControlsProps {
   onClearPersonal: () => void;
   onFire: () => void;
   onClearFire: () => void;
+  customActive?: boolean;
+  customResetSeconds?: number;
+  customRemainingMs?: number;
+  onResetCustom?: () => void;
 }
 
 export function EmergencyControls({
@@ -22,6 +27,10 @@ export function EmergencyControls({
   onClearPersonal,
   onFire,
   onClearFire,
+  customActive = false,
+  customResetSeconds = 0,
+  customRemainingMs = 0,
+  onResetCustom,
 }: EmergencyControlsProps) {
   return (
     <Panel eyebrow="Emergency Controls">
@@ -72,6 +81,27 @@ export function EmergencyControls({
             onClick={onClearPersonal}
           />
         </div>
+
+        {customActive && onResetCustom && (
+          <div className="custom-reset-card" role="status">
+            <div className="custom-reset-meta">
+              <div className="custom-reset-title">Custom pattern running</div>
+              <div className="custom-reset-sub">
+                Auto-resets in <strong>{customResetSeconds}s</strong>
+              </div>
+              <div
+                className="custom-reset-bar"
+                style={{
+                  ['--reset-pct' as string]: `${Math.max(0, Math.min(100, (customRemainingMs / 30000) * 100))}%`,
+                }}
+              />
+            </div>
+            <button type="button" className="custom-reset-btn" onClick={onResetCustom}>
+              <ResetIcon style={{ width: 15, height: 15 }} />
+              Reset
+            </button>
+          </div>
+        )}
       </div>
     </Panel>
   );

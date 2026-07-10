@@ -17,8 +17,8 @@
   width: 8px; height: 8px; border-radius: 50%; flex: none;
 }
 .ble-dot.on {
-  background: rgb(43, 226, 122);
-  box-shadow: 0 0 8px rgba(43,226,122,0.9);
+  background: rgb(0, 220, 48);
+  box-shadow: 0 0 8px rgba(0,220,48,0.9);
   animation: blePulse 2.4s ease-in-out infinite;
 }
 .ble-dot.busy {
@@ -61,7 +61,7 @@
 .ble-device-ic {
   width: 30px; height: 30px; border-radius: 8px; flex: none;
   display: grid; place-items: center;
-  background: rgba(43,226,122,0.14); color: #2be27a;
+  background: rgba(0,220,48,0.14); color: #00dc30;
 }
 .ble-device-meta { flex: 1; min-width: 0; }
 .ble-device-name { font-size: 12.5px; font-weight: 600; color: var(--hud-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -70,7 +70,7 @@
   font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
   padding: 3px 8px; border-radius: 999px; flex: none;
 }
-.ble-pill.ok { color: #2be27a; background: rgba(43,226,122,0.14); }
+.ble-pill.ok { color: #00dc30; background: rgba(0,220,48,0.14); }
 .ble-fallback {
   margin-top: 11px; padding-top: 12px;
   border-top: 1px solid var(--panel-border);
@@ -91,3 +91,248 @@
 .ble-btn.danger { background: rgba(255,80,72,0.16); color: #ff7a70; border-color: rgba(255,80,72,0.4); }
 .ble-btn.quiet { background: rgba(255,255,255,0.06); color: var(--hud-text); border-color: var(--panel-border); }
 .ble-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---------- BLE connect sheet (modal body) ---------- */
+.ble-sheet {
+  width: min(400px, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ble-sheet-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.ble-sheet-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: #d4dcff;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(170, 195, 255, 0.38), transparent 58%),
+    linear-gradient(160deg, rgba(70, 110, 255, 0.32), rgba(28, 34, 68, 0.72));
+  border: 1px solid rgba(170, 190, 255, 0.22);
+  box-shadow: 0 14px 32px -18px rgba(70, 120, 255, 0.85);
+}
+
+.ble-sheet-mark.busy {
+  color: #ffe0a0;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 210, 120, 0.35), transparent 58%),
+    linear-gradient(160deg, rgba(180, 130, 40, 0.3), rgba(50, 40, 18, 0.72));
+  border-color: rgba(255, 200, 110, 0.28);
+}
+
+.ble-sheet-mark.live {
+  color: #00dc30;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(90, 255, 170, 0.32), transparent 58%),
+    linear-gradient(160deg, rgba(36, 150, 95, 0.32), rgba(18, 48, 36, 0.72));
+  border-color: rgba(90, 230, 150, 0.3);
+}
+
+.ble-sheet-mark.err {
+  color: #ff8d86;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 120, 110, 0.28), transparent 58%),
+    linear-gradient(160deg, rgba(160, 40, 40, 0.28), rgba(48, 18, 18, 0.72));
+  border-color: rgba(255, 110, 100, 0.28);
+}
+
+.ble-sheet-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 220, 150, 0.25);
+  border-top-color: #ffd27a;
+  animation: bleSpin 0.75s linear infinite;
+}
+
+@keyframes bleSpin {
+  to { transform: rotate(360deg); }
+}
+
+.ble-sheet-check {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ble-sheet-copy {
+  max-width: 34ch;
+}
+
+.ble-sheet-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--hud-text);
+}
+
+.ble-sheet-prompt {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--hud-dim);
+}
+
+.ble-sheet-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--hud-faint);
+  letter-spacing: 0.2px;
+}
+
+.ble-sheet-progress-bar {
+  height: 3px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ble-sheet-progress-bar::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: 38%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4f8fff, #8ec0ff);
+  animation: bleProgress 1.15s ease-in-out infinite;
+}
+
+@keyframes bleProgress {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
+.ble-device-table {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(8, 9, 12, 0.55);
+  overflow: hidden;
+}
+
+.ble-device-table--rail {
+  margin-top: 2px;
+}
+
+.ble-sheet.live .ble-device-table {
+  border-color: rgba(0, 220, 48, 0.18);
+}
+
+.ble-sheet.err .ble-device-table {
+  border-color: rgba(255, 110, 100, 0.16);
+}
+
+.ble-device-table-row {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ble-device-table-row:first-child {
+  border-top: 0;
+}
+
+.ble-device-table-k {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--hud-faint);
+}
+
+.ble-device-table-v {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--hud-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ble-device-table-v.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #c9d0dc;
+}
+
+.ble-sheet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ble-modal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.12s ease;
+}
+
+.ble-modal-btn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.ble-modal-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ble-modal-btn.primary {
+  color: #fff;
+  background: linear-gradient(180deg, #5a97ff 0%, #2f6fe0 100%);
+  box-shadow: 0 12px 28px -14px rgba(47, 111, 224, 0.95);
+}
+
+.ble-modal-btn.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #6aa2ff 0%, #3878ea 100%);
+}
+
+.ble-modal-btn.danger {
+  color: #ff9a94;
+  background: rgba(255, 80, 72, 0.12);
+  border-color: rgba(255, 80, 72, 0.34);
+}
+
+.ble-modal-btn.danger:hover:not(:disabled) {
+  background: rgba(255, 80, 72, 0.18);
+}
+
+.ble-modal-btn.quiet {
+  color: var(--hud-text);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}

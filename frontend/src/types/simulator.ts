@@ -13,12 +13,14 @@ export type LedPattern =
   | 'off';
 
 export type HapticPattern =
-  | 'solid'
-  | 'pulse1'
-  | 'pulse2'
-  | 'continuous'
+  | 'off'
   | 'click'
-  | 'off';
+  | 'short-pulse'
+  | 'long-pulse'
+  | 'short-pulses'
+  | 'long-pulses'
+  | 'continuous'
+  | 'ramp';
 
 export type BuzzerPattern =
   | 'alternating'
@@ -38,6 +40,8 @@ export interface DeviceState {
   haptic: HapticPattern;
   buzzer: BuzzerPattern;
   alert: AlertLevel;
+  /** LED brightness 0–100 in steps of 10. */
+  brightness: number;
 }
 
 export interface FeatureFlags {
@@ -52,4 +56,4 @@ export interface UserProfile {
   initials: string;
 }
 
-export type PressedButton = 'personal' | 'fire' | null;
+export type PressedButton = 'personal' | 'fire' | 'left' | 'right' | null;

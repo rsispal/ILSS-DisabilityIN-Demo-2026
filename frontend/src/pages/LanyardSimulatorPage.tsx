@@ -4,6 +4,7 @@ import { AppMenuBar } from '@/components/layout/AppMenuBar';
 import { AlertBanner } from '@/components/layout/AlertBanner';
 import { EmergencyControls } from '@/components/controls/EmergencyControls';
 import { DeviceTelemetry } from '@/components/controls/DeviceTelemetry';
+import { LanyardDeviceSummary } from '@/components/ble/LanyardDeviceSummary';
 import { AdvancedLedPanel } from '@/components/controls/AdvancedLedPanel';
 import { AdvancedHapticsPanel } from '@/components/controls/AdvancedHapticsPanel';
 import { AdvancedBuzzerPanel } from '@/components/controls/AdvancedBuzzerPanel';
@@ -12,6 +13,8 @@ import { MobileControlsSheet } from '@/components/mobile/MobileControlsSheet';
 import { ExperimentsFab } from '@/components/experiments/ExperimentsFab';
 import { ExperimentsModal } from '@/components/experiments/ExperimentsModal';
 import { DeviceLogsSidebar } from '@/components/debug/DeviceLogsSidebar';
+import { LinkLostModal } from '@/components/ble/LinkLostModal';
+import { BleConnectModal } from '@/components/ble/BleConnectModal';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useSimulatorState } from '@/hooks/useSimulatorState';
 import { useAudioOutput } from '@/hooks/useAudioOutput';
@@ -26,11 +29,23 @@ export function LanyardSimulatorPage() {
   const isMobile = useIsMobile();
   const sceneRef = useRef<HTMLDivElement>(null);
   const { flags, setFlag, muted, setMuted } = useFeatureFlags();
-  const { st, setCh, firePreset, personalPreset, clearFire, clearPersonal } =
-    useSimulatorState();
+  const {
+    st,
+    setCh,
+    firePreset,
+    personalPreset,
+    clearFire,
+    clearPersonal,
+    resetToIdle,
+    customActive,
+    customRemainingMs,
+    customResetSeconds,
+  } = useSimulatorState();
   const ble = useBleTwin();
   const [pressed, setPressed] = useState<PressedButton>(null);
   const [expOpen, setExpOpen] = useState(false);
+  const [bleOpen, setBleOpen] = useState(false);
+  const [hbPulse, setHbPulse] = useState(false);
   const [introPhase, setIntroPhase] = useState<'wait' | 'play' | 'done'>('wait');
   const skipNextSend = useRef(false);
   const stRef = useRef(st);
@@ -48,7 +63,16 @@ export function LanyardSimulatorPage() {
   useAudioOutput(st.buzzer, muted);
   useLanyardScale(sceneRef, isMobile);
 
-  const { setOnRemoteState, sendTwinState, status: bleStatus, msg: bleMsg } = ble;
+  const {
+    setOnRemoteState,
+    setOnButtonPress,
+    setOnHeartbeat,
+    sendTwinState,
+    status: bleStatus,
+    msg: bleMsg,
+    linkLost,
+    clearLinkLost,
+  } = ble;
 
   // Inbound twin state from lanyard (e.g. button personal alert)
   useEffect(() => {
@@ -62,7 +86,25 @@ export function LanyardSimulatorPage() {
     return () => setOnRemoteState(null);
   }, [setOnRemoteState, setCh]);
 
-  // Outbound: push local state changes to device
+  // Momentary physical side-button → purple flash on the virtual lanyard
+  useEffect(() => {
+    setOnButtonPress((side) => {
+      setPressed(side);
+      window.setTimeout(() => setPressed((p) => (p === side ? null : p)), 280);
+    });
+    return () => setOnButtonPress(null);
+  }, [setOnButtonPress]);
+
+  // Heartbeat / poll alive → brief green LED pulse on the virtual lanyard
+  useEffect(() => {
+    setOnHeartbeat(() => {
+      setHbPulse(true);
+      window.setTimeout(() => setHbPulse(false), 550);
+    });
+    return () => setOnHeartbeat(null);
+  }, [setOnHeartbeat]);
+
+  // Outbound: push local state changes to device (wait for pairing CCCD settle)
   useEffect(() => {
     if (introPhase !== 'done') return;
     if (bleStatus !== 'connected') return;
@@ -70,7 +112,10 @@ export function LanyardSimulatorPage() {
       skipNextSend.current = false;
       return;
     }
-    void sendTwinState(st);
+    const t = window.setTimeout(() => {
+      void sendTwinState(st);
+    }, 120);
+    return () => window.clearTimeout(t);
   }, [st, sendTwinState, bleStatus, introPhase]);
 
   const press = (which: PressedButton, fn: () => void) => {
@@ -104,6 +149,7 @@ export function LanyardSimulatorPage() {
       ledRgb={ledRgb}
       ledPattern={st.led}
       ledOn={ledOn}
+      ledBrightness={st.brightness}
       hapticPattern={st.haptic}
       buzzerActive={buzzerActive}
       buzzerDur={BUZZER_DUR[st.buzzer] || 1.4}
@@ -111,6 +157,7 @@ export function LanyardSimulatorPage() {
       swingEnabled={flags.mouseSwing}
       introLedWait={introPhase === 'wait'}
       introPulse={introPhase === 'play'}
+      heartbeatPulse={hbPulse}
       onPressPersonal={() =>
         press('personal', () => (st.alert === 'personal' ? clearPersonal() : onPersonal()))
       }
@@ -141,8 +188,13 @@ export function LanyardSimulatorPage() {
             onClearPersonal={clearPersonal}
             onFire={onFire}
             onClearFire={clearFire}
+            customActive={customActive}
+            customResetSeconds={customResetSeconds}
+            customRemainingMs={customRemainingMs}
+            onResetCustom={resetToIdle}
           />
           <DeviceTelemetry st={st} muted={muted} />
+          <LanyardDeviceSummary className="ble-device-table--rail" />
         </>
       }
       center={lanyard}
@@ -170,6 +222,10 @@ export function LanyardSimulatorPage() {
             onClearPersonal={clearPersonal}
             onChange={onChangeAdvanced}
             onMutedChange={setMuted}
+            customActive={customActive}
+            customResetSeconds={customResetSeconds}
+            customRemainingMs={customRemainingMs}
+            onResetCustom={resetToIdle}
             onOpenExperiments={() => setExpOpen(true)}
           />
         ) : undefined
@@ -184,6 +240,16 @@ export function LanyardSimulatorPage() {
               onClose={() => setExpOpen(false)}
             />
           )}
+          {linkLost && (
+            <LinkLostModal
+              onClose={clearLinkLost}
+              onReconnect={() => {
+                clearLinkLost();
+                setBleOpen(true);
+              }}
+            />
+          )}
+          {bleOpen && <BleConnectModal onClose={() => setBleOpen(false)} />}
           <DeviceLogsSidebar
             open={flags.deviceLogs}
             onClose={() => setFlag('deviceLogs', false)}

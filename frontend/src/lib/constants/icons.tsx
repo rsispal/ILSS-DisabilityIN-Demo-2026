@@ -40,6 +40,13 @@ export const StopCircleIcon = ic([
   'M9 9h6v6H9z',
 ]);
 
+export const ResetIcon = ic([
+  'M3 12a9 9 0 0 1 15.5-6.4L21 8',
+  'M21 3v5h-5',
+  'M21 12a9 9 0 0 1-15.5 6.4L3 16',
+  'M3 21v-5h5',
+]);
+
 export const AlertTriIcon = ic([
   'M12 3 2 20h20L12 3Z',
   'M12 10v4',

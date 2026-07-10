@@ -10,6 +10,8 @@ interface BleMenuPanelProps {
   onPair: () => void;
   onSimulate: () => void;
   onDisconnect: () => void;
+  /** Hide the panel chrome when hosted inside a titled Modal. */
+  compact?: boolean;
 }
 
 export function BleMenuPanel({
@@ -20,6 +22,7 @@ export function BleMenuPanel({
   onPair,
   onSimulate,
   onDisconnect,
+  compact = false,
 }: BleMenuPanelProps) {
   let body;
   if (status === 'connected') {
@@ -84,16 +87,18 @@ export function BleMenuPanel({
   }
 
   return (
-    <div className="ble-menu-panel">
-      <div className="ble-pop-head">
-        <span className="ble-pop-ic">
-          <BtIcon style={{ width: 16, height: 16 }} />
-        </span>
-        <div>
-          <div className="ble-pop-title">Bluetooth</div>
-          <div className="ble-pop-sub">ILSS smart lanyard</div>
+    <div className={'ble-menu-panel' + (compact ? ' compact' : '')}>
+      {!compact && (
+        <div className="ble-pop-head">
+          <span className="ble-pop-ic">
+            <BtIcon style={{ width: 16, height: 16 }} />
+          </span>
+          <div>
+            <div className="ble-pop-title">Bluetooth</div>
+            <div className="ble-pop-sub">ILSS smart lanyard</div>
+          </div>
         </div>
-      </div>
+      )}
       {body}
       {msg && <div className="ble-msg">{msg}</div>}
     </div>

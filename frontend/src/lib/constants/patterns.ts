@@ -21,21 +21,25 @@ export const LED_LABELS: Record<LedPattern, string> = {
 };
 
 export const HAPTIC_PATTERNS = [
-  { v: 'solid' as const, l: 'Solid' },
-  { v: 'pulse1' as const, l: 'Pulse 1' },
-  { v: 'pulse2' as const, l: 'Pulse 2' },
-  { v: 'continuous' as const, l: 'Continuous' },
-  { v: 'click' as const, l: 'Click' },
   { v: 'off' as const, l: 'Off' },
+  { v: 'click' as const, l: 'Click' },
+  { v: 'short-pulse' as const, l: 'Short pulse' },
+  { v: 'long-pulse' as const, l: 'Long pulse' },
+  { v: 'short-pulses' as const, l: 'Short pulses' },
+  { v: 'long-pulses' as const, l: 'Long pulses' },
+  { v: 'continuous' as const, l: 'Strong continuous' },
+  { v: 'ramp' as const, l: 'Ramp up' },
 ];
 
 export const HAPTIC_LABELS: Record<HapticPattern, string> = {
-  solid: 'Solid',
-  pulse1: 'Pulse 1',
-  pulse2: 'Pulse 2',
-  continuous: 'Continuous',
-  click: 'Click',
   off: 'Off',
+  click: 'Click',
+  'short-pulse': 'Short pulse',
+  'long-pulse': 'Long pulse',
+  'short-pulses': 'Short pulses',
+  'long-pulses': 'Long pulses',
+  continuous: 'Strong continuous',
+  ramp: 'Ramp up',
 };
 
 export const BUZZER_PATTERNS = [
@@ -48,6 +52,7 @@ export const BUZZER_PATTERNS = [
   { v: 'code3-beep' as const, l: 'Code-3 beep' },
   { v: 'code3-sweep' as const, l: 'Code-3 sweep' },
   { v: 'code3-siren' as const, l: 'Code-3 siren' },
+  { v: 'off' as const, l: 'Off' },
 ];
 
 export const BUZZER_LABELS: Record<BuzzerPattern, string> = {
@@ -82,4 +87,5 @@ export const IDLE = {
   haptic: 'off' as const,
   buzzer: 'silent' as const,
   alert: 'none' as const,
+  brightness: 40,
 };
