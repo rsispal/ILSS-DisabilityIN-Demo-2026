@@ -115,10 +115,19 @@ body {
   z-index: 10;
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(225px, 280px) 1fr minmax(255px, 320px);
+  /* Left rail ~20% wider so emergency + telemetry + device summary fit with less vertical stacking. */
+  grid-template-columns: minmax(270px, 336px) 1fr minmax(255px, 320px);
+  grid-template-rows: minmax(0, 1fr);
   gap: 14px;
   min-height: 0;
   padding: 18px 20px 20px;
+  overflow: hidden;
+}
+
+/* Force every stage column to respect the stage height (grid default min-height:auto
+   otherwise sizes the left rail to its content and clips it instead of scrolling). */
+.stage > * {
+  min-height: 0;
 }
 
 .col-scene {
@@ -127,6 +136,7 @@ body {
   align-items: center;
   justify-content: center;
   min-width: 0;
+  min-height: 0;
   position: relative;
 }
 
