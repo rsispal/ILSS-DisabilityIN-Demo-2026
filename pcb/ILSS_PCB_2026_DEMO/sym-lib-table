@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "ILSS") (type "KiCad") (uri "${KIPRJMOD}/ILSS_LIBRARY/SYMBOLS/ILSS.kicad_sym") (options "") (descr ""))
+)
