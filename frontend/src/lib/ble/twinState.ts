@@ -81,6 +81,11 @@ export function isAdvancedPatch(st: DeviceState): boolean {
       st.color !== 'green' ||
       st.haptic !== 'off' ||
       (st.buzzer !== 'silent' && st.buzzer !== 'off') ||
-      clampBrightness(st.brightness ?? 100) !== 40)
+      clampBrightness(st.brightness ?? 100) !== 10)
   );
+}
+
+/** Stable key for twin-state equality (outbound dedupe / echo suppression). */
+export function twinStateKey(st: DeviceState): string {
+  return Array.from(packTwinState(st, isAdvancedPatch(st))).join(',');
 }

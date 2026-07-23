@@ -108,12 +108,26 @@ body {
   0%, 100% { box-shadow: inset 0 0 150px 20px rgba(var(--alert-rgb),0.30); }
   50%      { box-shadow: inset 0 0 260px 50px rgba(var(--alert-rgb),0.62); }
 }
-/* ---------- Legacy header class (AppMenuBar owns layout now) ---------- */
+/* ---------- Main + optional side drawer (logs) ---------- */
+.app-main {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-main--drawer .stage {
+  padding-right: 10px;
+}
+
 /* ---------- Main stage layout ---------- */
 .stage {
   position: relative;
   z-index: 10;
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   display: grid;
   /* Left rail ~20% wider so emergency + telemetry + device summary fit with less vertical stacking. */
   grid-template-columns: minmax(270px, 336px) 1fr minmax(255px, 320px);

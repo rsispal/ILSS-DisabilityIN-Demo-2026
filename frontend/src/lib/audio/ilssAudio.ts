@@ -64,8 +64,8 @@ function programCycle(p: string, t: number): number {
     }
     case 'bs-fast-sweep': {
       gateOn(t);
-      sweep(800, 970, t, 0.3);
-      return 0.3;
+      sweep(800, 970, t, 0.15);
+      return 0.15;
     }
     case 'siren': {
       gateOn(t);

@@ -210,7 +210,9 @@
     0 2px 2px rgba(0,0,0,0.6);
 }
 
-/* side buttons — visual elements on the device edges (clicks handled at scene level) */
+/* side buttons — wearer-oriented names (.left / .right = wearer's left / right).
+   Badge is shown front-facing, so wearer-left sits on screen-right (mirror view).
+   Clicks are handled at scene level. */
 .side-btn {
   position: absolute; top: 31%; z-index: 7;
   width: 13px; height: 140px; border-radius: 7px;
@@ -219,32 +221,34 @@
   transition: transform 0.08s ease, box-shadow 0.15s ease;
 }
 .side-btn.left {
-  left: -7px;
-  background: linear-gradient(90deg, #0a0b0c, #232529 55%, #0f1011);
-  box-shadow: -3px 0 6px -2px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06);
-}
-.side-btn.right {
   right: -7px;
+  left: auto;
   background: linear-gradient(90deg, #0f1011, #232529 45%, #0a0b0c);
   box-shadow: 3px 0 6px -2px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06);
 }
+.side-btn.right {
+  left: -7px;
+  right: auto;
+  background: linear-gradient(90deg, #0a0b0c, #232529 55%, #0f1011);
+  box-shadow: -3px 0 6px -2px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06);
+}
 .scene { cursor: default; }
 .scene:has(.side-btn:hover) { cursor: pointer; }
-.side-btn.left:active, .side-btn.left.press { transform: translateX(3px); }
-.side-btn.right:active, .side-btn.right.press { transform: translateX(-3px); }
+.side-btn.left:active, .side-btn.left.press { transform: translateX(-3px); }
+.side-btn.right:active, .side-btn.right.press { transform: translateX(3px); }
 .side-btn.press { box-shadow: 0 0 4px -1px rgba(0,0,0,0.8); }
 
-/* Physical lanyard tap mirrored over BLE — purple glow on the matching side. */
+/* Physical lanyard tap over BLE — purple glow on the wearer's matching side. */
 .side-btn.left.lit {
-  background: linear-gradient(90deg, #4a1a6e, #b254ff 55%, #6b2a9e);
-  box-shadow:
-    -3px 0 14px 2px rgba(178, 84, 255, 0.75),
-    inset 0 1px 0 rgba(255, 220, 255, 0.35);
-}
-.side-btn.right.lit {
   background: linear-gradient(90deg, #6b2a9e, #b254ff 45%, #4a1a6e);
   box-shadow:
     3px 0 14px 2px rgba(178, 84, 255, 0.75),
+    inset 0 1px 0 rgba(255, 220, 255, 0.35);
+}
+.side-btn.right.lit {
+  background: linear-gradient(90deg, #4a1a6e, #b254ff 55%, #6b2a9e);
+  box-shadow:
+    -3px 0 14px 2px rgba(178, 84, 255, 0.75),
     inset 0 1px 0 rgba(255, 220, 255, 0.35);
 }
 

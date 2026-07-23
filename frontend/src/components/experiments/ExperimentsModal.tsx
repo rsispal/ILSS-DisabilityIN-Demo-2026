@@ -87,7 +87,7 @@ export function ExperimentsModal({ flags, setFlag, onClose }: ExperimentsModalPr
                 <Input
                   id="prof-name"
                   value={name}
-                  placeholder="e.g. A. Morgan"
+                  placeholder="e.g. Rav Sispal"
                   onChange={(ev) => setName(ev.target.value)}
                 />
               </Control>
@@ -98,7 +98,7 @@ export function ExperimentsModal({ flags, setFlag, onClose }: ExperimentsModalPr
                 <Input
                   id="prof-init"
                   value={initials}
-                  placeholder="AM"
+                  placeholder="RS"
                   maxLength={3}
                   onChange={(ev) => setInitials(ev.target.value.toUpperCase())}
                 />

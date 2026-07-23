@@ -9,7 +9,6 @@ interface LanyardProps {
   ledBrightness?: number;
   hapticPattern: HapticPattern;
   buzzerActive: boolean;
-  buzzerDur: number;
   pressed: PressedButton;
   swingEnabled: boolean;
   introLedWait?: boolean;
@@ -27,7 +26,6 @@ export function Lanyard({
   ledBrightness = 100,
   hapticPattern,
   buzzerActive,
-  buzzerDur,
   pressed,
   swingEnabled,
   introLedWait = false,
@@ -63,11 +61,12 @@ export function Lanyard({
     .filter(Boolean)
     .join(' ');
 
+  // Buzz rings use a fixed CSS duration (--buzz-dur default 1.4s) — not tied to
+  // audio cycle length, which is far too fast for patterns like bs-fast-sweep.
   const sceneStyle = {
     '--led-rgb': displayLedRgb,
     '--led-on': displayLedOn ? 1 : 0,
     '--led-bright': displayLedBright,
-    '--buzz-dur': buzzerDur + 's',
   } as CSSProperties;
 
   const hitButton = (x: number, y: number, pad = 12) => {
@@ -167,7 +166,7 @@ export function Lanyard({
                 (pressed === 'personal' || pressed === 'left' ? ' press' : '') +
                 (pressed === 'left' ? ' lit' : '')
               }
-              aria-label="Personal alert button"
+              aria-label="Wearer left button"
             />
             <button
               type="button"
@@ -177,7 +176,7 @@ export function Lanyard({
                 (pressed === 'personal' || pressed === 'right' ? ' press' : '') +
                 (pressed === 'right' ? ' lit' : '')
               }
-              aria-label="Personal alert button"
+              aria-label="Wearer right button"
             />
             <div className="eq">
               <span />

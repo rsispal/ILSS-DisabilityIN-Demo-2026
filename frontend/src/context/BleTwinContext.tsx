@@ -45,6 +45,7 @@ import {
   unpackTwinState,
   isAdvancedPatch,
 } from '@/lib/ble/twinState';
+import { parseDeviceLog, type ParsedDeviceLog } from '@/lib/ble/parseDeviceLog';
 
 export type BleTwinStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -56,9 +57,10 @@ export interface DeviceMetadata {
   battery: number;
 }
 
-export interface DeviceLogLine {
+export interface DeviceLogLine extends ParsedDeviceLog {
   id: number;
   ts: number;
+  /** Raw line (copy / fallback) */
   text: string;
 }
 
@@ -158,8 +160,9 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
 
   const appendLog = useCallback((text: string) => {
     const id = logId.current++;
+    const parsed = parseDeviceLog(text);
     setLogs((prev) => {
-      const next = [...prev, { id, ts: Date.now(), text }];
+      const next = [...prev, { id, ts: Date.now(), text, ...parsed }];
       return next.length > LOG_CAP ? next.slice(-LOG_CAP) : next;
     });
   }, []);
@@ -275,6 +278,8 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
         }
         return;
       }
+      // ACK/NAK are replies only — never treat as twin-state payloads (empty data
+      // unpacks to IDLE and used to bounce the web UI into a send↔status loop).
       if (pkt.flags & FLAG_ACK) {
         appendLog(`I (ble) ACK code=0x${pkt.code.toString(16)} msgId=${pkt.messageId}`);
         if (pkt.code === APP_CODE_HEARTBEAT) {
@@ -283,6 +288,7 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
             noteHeartbeat('web-poll ACK');
           }
         }
+        return;
       }
 
       // Device→web heartbeat poll (CMD on Event notify) — ACK and pulse UI.
@@ -307,7 +313,7 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (pkt.flags & (FLAG_EVT | FLAG_RPL | FLAG_ACK)) {
+      if (pkt.flags & (FLAG_EVT | FLAG_RPL)) {
         if (pkt.code === APP_CODE_BUTTON && (pkt.flags & FLAG_EVT) && pkt.data.length >= 1) {
           const side = pkt.data[0] === BUTTON_SIDE_LEFT ? 'left' : 'right';
           onButtonPressRef.current?.(side);
@@ -324,7 +330,10 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
           onRemoteRef.current?.(st);
           return;
         }
-        if (pkt.code === APP_CODE_TWIN_STATE || (pkt.flags & FLAG_RPL && pkt.data.length >= 6)) {
+        if (
+          pkt.data.length >= 6 &&
+          (pkt.code === APP_CODE_TWIN_STATE || (pkt.flags & FLAG_RPL) !== 0)
+        ) {
           const st = unpackTwinState(pkt.data);
           onRemoteRef.current?.(st);
           appendLog(`I (ble) twin state alert=${st.alert} led=${st.led} color=${st.color}`);
@@ -342,6 +351,9 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
       const buf = new Uint8Array(value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength));
       const st = unpackTwinState(buf);
       appendLog(`D (ble) RX Status alert=${st.alert} led=${st.led}`);
+      // Status mirrors device state after applies; UI sync is driven by Event twin
+      // notifies. Still forward so the page can adopt device-originated changes when
+      // no Event twin payload arrived — page dedupes identical keys before TX.
       onRemoteRef.current?.(st);
     },
     [appendLog],
@@ -656,7 +668,7 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
       setName('ILSS-LY · SIM');
       setMetadata({
         serial: 'ILSS-LY-SIM',
-        model: 'ILSS-Lanyard-Breakout',
+        model: 'ILSS-LANYARD-HW1_0-DISABILITYIN',
         software: '0.1.0-sim',
         brand: 1,
         battery: 87,

@@ -6,7 +6,16 @@ import { LED_PATTERNS } from '@/lib/constants/patterns';
 import { clampBrightness } from '@/lib/ble/twinState';
 import type { ColorKey, DeviceState, LedPattern } from '@/types/simulator';
 
-const SELECTABLE_LED: LedPattern[] = ['solid', 'flash', 'alt', 'half', 'chase', 'off'];
+const SELECTABLE_LED: LedPattern[] = [
+  'solid',
+  'flash',
+  'double',
+  'pulse',
+  'alt',
+  'half',
+  'chase',
+  'off',
+];
 
 interface AdvancedLedPanelProps {
   st: DeviceState;

@@ -10,6 +10,8 @@ interface AppShellProps {
   right: ReactNode;
   footer?: ReactNode;
   mobileSheet?: ReactNode;
+  /** In-flow side drawer (e.g. device logs) — shrinks the stage when present */
+  drawer?: ReactNode;
   sceneRef?: RefObject<HTMLDivElement>;
 }
 
@@ -22,6 +24,7 @@ export function AppShell({
   right,
   footer,
   mobileSheet,
+  drawer,
   sceneRef,
 }: AppShellProps) {
   const alertRgb =
@@ -37,12 +40,15 @@ export function AppShell({
       />
       {header}
       {banner}
-      <div className="stage">
-        <div className="col-left">{left}</div>
-        <div className="col-scene" ref={sceneRef}>
-          {center}
+      <div className={'app-main' + (drawer ? ' app-main--drawer' : '')}>
+        <div className="stage">
+          <div className="col-left">{left}</div>
+          <div className="col-scene" ref={sceneRef}>
+            {center}
+          </div>
+          <div className="col-right">{right}</div>
         </div>
-        <div className="col-right">{right}</div>
+        {drawer}
       </div>
       {mobileSheet}
       {footer}

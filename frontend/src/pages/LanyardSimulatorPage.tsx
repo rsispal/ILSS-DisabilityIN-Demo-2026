@@ -22,7 +22,8 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import { useLanyardScale } from '@/hooks/useLanyardScale';
 import { useBleTwin } from '@/context/BleTwinContext';
 import { COLORS } from '@/lib/constants/colors';
-import { BUZZER_DUR } from '@/lib/constants/patterns';
+import { IDLE, IDLE_DISPLAY_BRIGHTNESS } from '@/lib/constants/patterns';
+import { twinStateKey } from '@/lib/ble/twinState';
 import type { DeviceState, PressedButton } from '@/types/simulator';
 
 export function LanyardSimulatorPage() {
@@ -45,10 +46,30 @@ export function LanyardSimulatorPage() {
   const [pressed, setPressed] = useState<PressedButton>(null);
   const [expOpen, setExpOpen] = useState(false);
   const [logsOpen, setLogsOpen] = useState(false);
+  const [logsWidth, setLogsWidth] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ilss.logsDrawerWidth');
+      const n = raw ? Number(raw) : 360;
+      return Number.isFinite(n) ? Math.min(640, Math.max(280, n)) : 360;
+    } catch {
+      return 360;
+    }
+  });
+  const onLogsWidthChange = (w: number) => {
+    setLogsWidth(w);
+    try {
+      localStorage.setItem('ilss.logsDrawerWidth', String(w));
+    } catch {
+      /* ignore */
+    }
+  };
   const [bleOpen, setBleOpen] = useState(false);
   const [hbPulse, setHbPulse] = useState(false);
   const [introPhase, setIntroPhase] = useState<'wait' | 'play' | 'done'>('wait');
-  const skipNextSend = useRef(false);
+  /** >0 → swallow that many outbound syncs (remote Event + Status can both apply). */
+  const suppressOutbound = useRef(0);
+  /** Last twin key applied remotely or sent — blocks echo of identical state. */
+  const lastSyncedKey = useRef<string | null>(null);
   const stRef = useRef(st);
   stRef.current = st;
 
@@ -87,7 +108,11 @@ export function LanyardSimulatorPage() {
       const cur = stRef.current;
       if (cur.alert === 'fire' && remote.alert === 'personal') return;
       if (cur.alert === 'personal' && remote.alert === 'fire') return;
-      skipNextSend.current = true;
+      const key = twinStateKey(remote);
+      // Already mirroring this exact twin snapshot (Status often duplicates Event).
+      if (key === lastSyncedKey.current) return;
+      suppressOutbound.current += 1;
+      lastSyncedKey.current = key;
       setCh(remote);
     });
     return () => setOnRemoteState(null);
@@ -115,12 +140,22 @@ export function LanyardSimulatorPage() {
   useEffect(() => {
     if (introPhase !== 'done') return;
     if (bleStatus !== 'connected') return;
-    if (skipNextSend.current) {
-      skipNextSend.current = false;
+    if (suppressOutbound.current > 0) {
+      suppressOutbound.current -= 1;
       return;
     }
+    const key = twinStateKey(st);
+    if (key === lastSyncedKey.current) return;
     const t = window.setTimeout(() => {
-      void sendTwinState(st);
+      // Re-check after debounce — a remote apply may have landed meanwhile.
+      if (suppressOutbound.current > 0) {
+        suppressOutbound.current -= 1;
+        return;
+      }
+      if (key !== twinStateKey(stRef.current)) return;
+      if (key === lastSyncedKey.current) return;
+      lastSyncedKey.current = key;
+      void sendTwinState(stRef.current);
     }, 120);
     return () => window.clearTimeout(t);
   }, [st, sendTwinState, bleStatus, introPhase]);
@@ -150,16 +185,22 @@ export function LanyardSimulatorPage() {
   const ledRgb = COLORS[st.color].rgb;
   const ledOn = st.led !== 'off';
   const buzzerActive = st.buzzer !== 'silent' && st.buzzer !== 'off';
+  // Protocol idle is 10% for the lanyard; boost only the on-screen twin.
+  const isIdleGreen =
+    st.alert === 'none' &&
+    st.color === 'green' &&
+    st.led === 'solid' &&
+    (st.brightness ?? 100) <= IDLE.brightness;
+  const ledBrightness = isIdleGreen ? IDLE_DISPLAY_BRIGHTNESS : (st.brightness ?? 100);
 
   const lanyard = (
     <Lanyard
       ledRgb={ledRgb}
       ledPattern={st.led}
       ledOn={ledOn}
-      ledBrightness={st.brightness}
+      ledBrightness={ledBrightness}
       hapticPattern={st.haptic}
       buzzerActive={buzzerActive}
-      buzzerDur={BUZZER_DUR[st.buzzer] || 1.4}
       pressed={pressed}
       swingEnabled={flags.mouseSwing}
       introLedWait={introPhase === 'wait'}
@@ -220,6 +261,16 @@ export function LanyardSimulatorPage() {
           />
         </>
       }
+      drawer={
+        flags.deviceLogs && logsOpen && !isMobile ? (
+          <DeviceLogsSidebar
+            open
+            onClose={() => setLogsOpen(false)}
+            width={logsWidth}
+            onWidthChange={onLogsWidthChange}
+          />
+        ) : undefined
+      }
       mobileSheet={
         isMobile ? (
           <MobileControlsSheet
@@ -268,7 +319,15 @@ export function LanyardSimulatorPage() {
             />
           )}
           {bleOpen && <BleConnectModal onClose={() => setBleOpen(false)} />}
-          <DeviceLogsSidebar open={logsOpen} onClose={() => setLogsOpen(false)} />
+          {flags.deviceLogs && isMobile ? (
+            <DeviceLogsSidebar
+              open={logsOpen}
+              onClose={() => setLogsOpen(false)}
+              width={logsWidth}
+              onWidthChange={onLogsWidthChange}
+              overlay
+            />
+          ) : null}
         </>
       }
     />

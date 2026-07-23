@@ -3,6 +3,8 @@ import type { BuzzerPattern, HapticPattern, LedPattern } from '@/types/simulator
 export const LED_PATTERNS = [
   { v: 'solid' as const, l: 'Solid' },
   { v: 'flash' as const, l: 'Single flash' },
+  { v: 'double' as const, l: 'Double flash' },
+  { v: 'pulse' as const, l: 'Pulsing' },
   { v: 'alt' as const, l: 'Alternating' },
   { v: 'half' as const, l: 'Half-half' },
   { v: 'chase' as const, l: 'Chasing' },
@@ -12,12 +14,12 @@ export const LED_PATTERNS = [
 export const LED_LABELS: Record<LedPattern, string> = {
   solid: 'Solid',
   flash: 'Single flash',
+  double: 'Double flash',
+  pulse: 'Pulsing',
   alt: 'Alternating',
   half: 'Half-half',
   chase: 'Chasing',
   off: 'Off',
-  pulse: 'Pulsing',
-  double: 'Double flash',
 };
 
 export const HAPTIC_PATTERNS = [
@@ -68,10 +70,11 @@ export const BUZZER_LABELS: Record<BuzzerPattern, string> = {
   off: 'Off',
 };
 
+/** Audio cycle lengths (seconds) for reference / WebAudio — not used for buzz-ring UI. */
 export const BUZZER_DUR: Partial<Record<BuzzerPattern, number>> = {
   alternating: 0.5,
   'bs-sweep': 1.0,
-  'bs-fast-sweep': 0.3,
+  'bs-fast-sweep': 0.15,
   'lf-buzz': 0.5,
   siren: 0.28,
   'code3-beep': 1.0,
@@ -81,11 +84,18 @@ export const BUZZER_DUR: Partial<Record<BuzzerPattern, number>> = {
   off: 1.4,
 };
 
+/** Protocol / device idle brightness (physical strip stays dim). */
 export const IDLE = {
   color: 'green' as const,
   led: 'solid' as const,
   haptic: 'off' as const,
   buzzer: 'silent' as const,
   alert: 'none' as const,
-  brightness: 40,
+  brightness: 10,
 };
+
+/**
+ * Web twin only — idle green at protocol 10% is too faint on screen.
+ * BLE TwinState still uses IDLE.brightness; firmware keeps HW at 10%.
+ */
+export const IDLE_DISPLAY_BRIGHTNESS = 40;
