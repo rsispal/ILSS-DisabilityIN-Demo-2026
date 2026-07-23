@@ -94,6 +94,11 @@ public:
     int set_waveform_sequence(uint8_t slot, uint8_t waveform);
     int play_pattern(uint8_t pattern);
 
+    /** Read STATUS (clears sticky fault flags). Returns -1 on I2C error. */
+    int read_status(uint8_t* status_out);
+    /** Clear faults, exit standby, return to internal-trigger mode. */
+    int recover();
+
 private:
     I2CLowLevelDriver *m_i2c_driver;
     Logger logger;
@@ -101,5 +106,6 @@ private:
     int write_register(uint8_t reg, uint8_t value);
     int read_register(uint8_t reg, uint8_t *value);
     uint8_t voltage_to_reg_value(float voltage);
+    void log_status(uint8_t status);
 };
 

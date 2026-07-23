@@ -209,6 +209,50 @@ bool BluetoothLowLevelDriver::registerGattServices() {
     return true;
 }
 
+void BluetoothLowLevelDriver::logConnParams(uint16_t conn_handle, const char* why) {
+    struct ble_gap_conn_desc desc;
+    if (ble_gap_conn_find(conn_handle, &desc) != 0) {
+        ESP_LOGW(TAG, "conn_find failed (%s)", why ? why : "?");
+        return;
+    }
+    // itvl unit 1.25ms, supervision unit 10ms
+    ESP_LOGI(TAG, "Conn params (%s): itvl=%u (%.2fms) latency=%u supervision=%u (%ums)",
+             why ? why : "?",
+             desc.conn_itvl, desc.conn_itvl * 1.25f,
+             desc.conn_latency,
+             desc.supervision_timeout,
+             static_cast<unsigned>(desc.supervision_timeout) * 10u);
+}
+
+void BluetoothLowLevelDriver::requestPreferredConnParams(uint16_t conn_handle, bool conservative) {
+    // Units: interval=1.25ms, supervision_timeout=10ms.
+    // Longer supervision helps Web Bluetooth survive buzzer/haptic EMI during alerts.
+    struct ble_gap_upd_params upd = {};
+    if (conservative) {
+        upd.itvl_min = 40;               // 50 ms
+        upd.itvl_max = 80;               // 100 ms
+        upd.supervision_timeout = 2000;  // 20 s
+    } else {
+        upd.itvl_min = 24;               // 30 ms
+        upd.itvl_max = 48;               // 60 ms
+        upd.supervision_timeout = 2000;  // 20 s
+    }
+    upd.latency = 0;
+    upd.min_ce_len = 0;
+    upd.max_ce_len = 0;
+    int urc = ble_gap_update_params(conn_handle, &upd);
+    if (urc != 0) {
+        ESP_LOGW(TAG, "ble_gap_update_params(%s): %d",
+                 conservative ? "conservative" : "preferred", urc);
+    } else {
+        ESP_LOGI(TAG, "Requested conn params %s itvl=%u-%u supervision=%ums",
+                 conservative ? "conservative" : "preferred",
+                 static_cast<unsigned>(upd.itvl_min) * 125u / 100u,
+                 static_cast<unsigned>(upd.itvl_max) * 125u / 100u,
+                 static_cast<unsigned>(upd.supervision_timeout) * 10u);
+    }
+}
+
 int BluetoothLowLevelDriver::onGapEvent(struct ble_gap_event* event, void* /*arg*/) {
     auto* self = s_instance;
     if (!self) return 0;
@@ -219,18 +263,57 @@ int BluetoothLowLevelDriver::onGapEvent(struct ble_gap_event* event, void* /*arg
                 self->refreshGattHandles();
                 self->connected_ = true;
                 self->conn_handle_ = event->connect.conn_handle;
+                self->conn_param_retried_ = false;
                 // ESP_LOG only — never Logger fan-out from NimBLE host task.
                 ESP_LOGI(self->TAG, "Connected handle=%u", self->conn_handle_);
+                self->logConnParams(self->conn_handle_, "initial");
+                self->requestPreferredConnParams(self->conn_handle_, /*conservative=*/false);
                 if (self->on_conn_) self->on_conn_(true, self->conn_handle_);
             } else {
                 ESP_LOGW(self->TAG, "Connect failed status=%d", event->connect.status);
                 self->startAdvertising(self->serial_);
             }
             break;
-        case BLE_GAP_EVENT_DISCONNECT:
-            ESP_LOGI(self->TAG, "Disconnected reason=%d", event->disconnect.reason);
+        case BLE_GAP_EVENT_CONN_UPDATE:
+            ESP_LOGI(self->TAG, "Conn update complete status=%d", event->conn_update.status);
+            if (event->conn_update.status == 0) {
+                self->logConnParams(event->conn_update.conn_handle, "updated");
+            } else if (!self->conn_param_retried_) {
+                self->conn_param_retried_ = true;
+                ESP_LOGW(self->TAG, "Conn update rejected — retrying conservative params");
+                self->requestPreferredConnParams(event->conn_update.conn_handle, /*conservative=*/true);
+            }
+            break;
+        case BLE_GAP_EVENT_CONN_UPDATE_REQ:
+            // Peer (browser) is proposing params — prefer a long supervision timeout.
+            if (event->conn_update_req.self_params) {
+                if (event->conn_update_req.self_params->supervision_timeout < 2000) {
+                    event->conn_update_req.self_params->supervision_timeout = 2000;
+                }
+                if (event->conn_update_req.self_params->itvl_min < 24) {
+                    event->conn_update_req.self_params->itvl_min = 24;
+                }
+                if (event->conn_update_req.self_params->itvl_max < 48) {
+                    event->conn_update_req.self_params->itvl_max = 48;
+                }
+                ESP_LOGI(self->TAG,
+                         "Conn update req → reply itvl=%u-%u supervision=%u",
+                         event->conn_update_req.self_params->itvl_min,
+                         event->conn_update_req.self_params->itvl_max,
+                         event->conn_update_req.self_params->supervision_timeout);
+            }
+            return 0;  // accept
+        case BLE_GAP_EVENT_DISCONNECT: {
+            const int reason = event->disconnect.reason;
+            // NimBLE: BLE_HS_HCI_ERR(x) = 0x200 + HCI status. 0x08 = supervision timeout.
+            if ((reason & 0xFF00) == 0x200 && (reason & 0xFF) == 0x08) {
+                ESP_LOGW(self->TAG, "Disconnected reason=%d (HCI supervision timeout)", reason);
+            } else {
+                ESP_LOGI(self->TAG, "Disconnected reason=%d", reason);
+            }
             self->connected_ = false;
             self->conn_handle_ = 0xFFFF;
+            self->conn_param_retried_ = false;
             self->log_notify_enabled_ = false;
             self->event_notify_enabled_ = false;
             self->status_notify_enabled_ = false;
@@ -238,6 +321,7 @@ int BluetoothLowLevelDriver::onGapEvent(struct ble_gap_event* event, void* /*arg
             if (self->on_conn_) self->on_conn_(false, 0xFFFF);
             self->startAdvertising(self->serial_);
             break;
+        }
         case BLE_GAP_EVENT_SUBSCRIBE:
             if (event->subscribe.attr_handle == self->handle_log_) {
                 self->log_notify_enabled_ = event->subscribe.cur_notify;

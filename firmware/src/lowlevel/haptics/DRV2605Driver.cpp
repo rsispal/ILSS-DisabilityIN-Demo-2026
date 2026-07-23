@@ -45,6 +45,56 @@ uint8_t DRV2605Driver::voltage_to_reg_value(float voltage)
     return value;
 }
 
+void DRV2605Driver::log_status(uint8_t status)
+{
+    const uint8_t device_id = (status >> 5) & 0x07;
+    logger.LOGI(TAG, "DRV2605 Status: 0x%02x (id=%u%s%s%s)",
+                status,
+                device_id,
+                (status & 0x08) ? " DIAG_FAIL" : "",
+                (status & 0x02) ? " OVER_TEMP" : "",
+                (status & 0x01) ? " OC_DETECT" : "");
+    if (device_id != 7) {
+        logger.LOGW(TAG, "Unexpected device ID %u (want 7 = DRV2605L)", device_id);
+    }
+    if (status & 0x01) {
+        logger.LOGW(TAG, "OC_DETECT set — H-bridge disabled until fault cleared; "
+                         "check MOTOR+/- short/open, EN jumper, and actuator wiring");
+    }
+}
+
+int DRV2605Driver::read_status(uint8_t* status_out)
+{
+    uint8_t value = 0;
+    int ret = read_register(DRV2605_REG_STATUS, &value);
+    if (ret < 0) {
+        return ret;
+    }
+    if (status_out) {
+        *status_out = value;
+    }
+    return 0;
+}
+
+int DRV2605Driver::recover()
+{
+    uint8_t status = 0;
+    // Reading STATUS clears sticky OC/OT/DIAG flags.
+    int ret = read_status(&status);
+    if (ret < 0) {
+        return ret;
+    }
+    log_status(status);
+
+    // Adafruit-compatible: write MODE directly (must clear STANDBY bit 6).
+    ret = write_register(DRV2605_REG_MODE, DRV2605_MODE_INTTRIG);
+    if (ret < 0) {
+        return ret;
+    }
+    ret = write_register(DRV2605_REG_GO, 0x00);
+    return ret;
+}
+
 bool DRV2605Driver::begin()
 {
     if (m_initialized) {
@@ -55,14 +105,13 @@ bool DRV2605Driver::begin()
     int ret;
     uint8_t value;
     
-    // Read status register to verify communication
+    // Read status register to verify communication (also clears sticky faults)
     ret = read_register(DRV2605_REG_STATUS, &value);
     if (ret < 0) {
         logger.LOGE(TAG, "Failed to read status register: %d", ret);
         return false;
     }
-    
-    logger.LOGI(TAG, "DRV2605 Status: 0x%02x", value);
+    log_status(value);
     
     // Match Arduino's exact initialization sequence (ERM mode)
     logger.LOGD(TAG, "Initializing DRV2605 (ERM mode)");
@@ -144,6 +193,9 @@ bool DRV2605Driver::begin()
         logger.LOGE(TAG, "Failed to set CONTROL3: %d", ret);
         return false;
     }
+
+    // Clear any OC latch from power-up / prior runs and ensure not in standby.
+    recover();
     
     m_initialized = true;
     logger.LOGI(TAG, "DRV2605 initialized successfully (ERM mode)");
@@ -152,14 +204,9 @@ bool DRV2605Driver::begin()
 
 int DRV2605Driver::set_mode(uint8_t mode)
 {
-    uint8_t value;
-    int ret = read_register(DRV2605_REG_MODE, &value);
-    if (ret < 0) {
-        return ret;
-    }
-    
-    value = (value & 0xF8) | (mode & 0x07); // Preserve standby bit, set mode
-    return write_register(DRV2605_REG_MODE, value);
+    // Match Adafruit: write MODE register directly so STANDBY (bit 6) is cleared.
+    // Preserving STANDBY left the chip silent after OC_DETECT auto-standby.
+    return write_register(DRV2605_REG_MODE, mode & 0x07);
 }
 
 int DRV2605Driver::set_library(uint8_t library)
@@ -239,8 +286,19 @@ int DRV2605Driver::select_library(uint8_t lib)
 int DRV2605Driver::play_pattern(uint8_t pattern)
 {
     int ret;
+    uint8_t status = 0;
     
     logger.LOGD(TAG, "Playing pattern %d", pattern);
+
+    // Clear sticky OC/OT and force out of standby before every playback.
+    ret = read_status(&status);
+    if (ret < 0) {
+        logger.LOGE(TAG, "Failed to read status before play: %d", ret);
+        return ret;
+    }
+    if (status & 0x01) {
+        logger.LOGW(TAG, "OC_DETECT was set before play (0x%02x) — cleared; retrying wake", status);
+    }
     
     // Match Arduino's exact sequence: selectLibrary(1), setMode(0), setWaveform, go()
     // Note: Arduino uses Library 1 (ERM), not Library 6 (LRA)
@@ -272,6 +330,14 @@ int DRV2605Driver::play_pattern(uint8_t pattern)
     if (ret < 0) {
         logger.LOGE(TAG, "Failed to trigger GO: %d", ret);
         return ret;
+    }
+
+    // If the actuator path is shorted/missing, OC re-latches immediately.
+    ret = read_status(&status);
+    if (ret == 0 && (status & 0x01)) {
+        logger.LOGE(TAG, "Pattern %d: OC_DETECT re-latched after GO (0x%02x) — motor path fault",
+                    pattern, status);
+        return -EIO;
     }
     
     logger.LOGD(TAG, "Pattern %d triggered", pattern);

@@ -18,7 +18,7 @@ bool Logger::shouldLog(LogLevel level) const {
 }
 
 void Logger::fanOutBle(char level_ch, const char* tag, const char* msg) const {
-    if (!ble_sink_) return;
+    if (!ble_sink_ || !ble_fanout_enabled_) return;
     char line[200];
     snprintf(line, sizeof(line), "%c (%s) %s", level_ch, tag ? tag : "?", msg ? msg : "");
     ble_sink_(line);

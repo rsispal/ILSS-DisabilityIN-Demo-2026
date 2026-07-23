@@ -46,11 +46,19 @@ public:
     /** One-shot green flash after successful pair, then idle. */
     void showConnectedFlash();
 
+    /**
+     * Brief green brightness bump on heartbeat poll (matches web hb-pulse ~550ms).
+     * No-op during fire/personal alerts or when not in Connected link mode.
+     */
+    void showHeartbeatPulse();
+
 private:
     // Physical strip brightness ladder (web twin may report different idle %).
-    static constexpr uint8_t kHwIdleGreenPct = 10;   // paired, no alert
+    static constexpr uint8_t kHwIdleGreenPct = 10;   // paired, no alert (physical quiescent)
     static constexpr uint8_t kHwUnpairedPct = 20;    // blue single flash
     static constexpr uint8_t kHwPairingPct = 30;     // blue chase
+    static constexpr uint8_t kHwHeartbeatPulsePct = 50;  // gentle alive bump
+    static constexpr uint32_t kHeartbeatPulseMs = 550;   // match web hb-pulse
     // Pair flash + fire/personal stay at 100% (attention).
 
     Logger* logger_;
@@ -64,6 +72,8 @@ private:
     uint32_t last_haptic_ms_ = 0;
     uint32_t haptic_period_ms_ = 0;
     uint32_t connected_flash_until_ms_ = 0;
+    /** Defer I2C haptic start off NimBLE GATT/host task onto led_task. */
+    bool haptic_start_pending_ = false;
 
     void driveLed(const ilss::TwinState& s);
     void driveBuzzer(const ilss::TwinState& s);

@@ -5,7 +5,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-// Initialize singleton
 SideButtons* SideButtons::instance = nullptr;
 
 SideButtons::SideButtons(State* state, gpio_num_t left_pin, gpio_num_t right_pin)
@@ -15,6 +14,8 @@ SideButtons::SideButtons(State* state, gpio_num_t left_pin, gpio_num_t right_pin
       left_button_pressed(false), right_button_pressed(false),
       both_hold_detected(false),
       both_hold_timer(nullptr),
+      left_cue_ms_(0),
+      right_cue_ms_(0),
       event_callback(nullptr)
 {
     logger.setLogLevel(LogLevel::DEBUG);
@@ -23,17 +24,14 @@ SideButtons::SideButtons(State* state, gpio_num_t left_pin, gpio_num_t right_pin
 
 SideButtons::~SideButtons()
 {
-    // Clear callback to prevent it from being called during shutdown
     event_callback = nullptr;
-    
-    // Stop and delete both hold timer
+
     if (both_hold_timer) {
         esp_timer_stop(both_hold_timer);
         esp_timer_delete(both_hold_timer);
         both_hold_timer = nullptr;
     }
-    
-    // Delete button handles
+
     if (left_button_handle) {
         iot_button_delete(left_button_handle);
         left_button_handle = nullptr;
@@ -42,78 +40,83 @@ SideButtons::~SideButtons()
         iot_button_delete(right_button_handle);
         right_button_handle = nullptr;
     }
-    
+
     instance = nullptr;
 }
 
 uint32_t SideButtons::getHoldThresholdMs() const
 {
-    // Use State's configurable value if available, otherwise use default
     if (state) {
         return static_cast<uint32_t>(state->getPersonalAlertButtonTriggerDelayMs());
     }
     return HOLD_THRESHOLD_MS_DEFAULT;
 }
 
+uint32_t SideButtons::nowMs()
+{
+    return static_cast<uint32_t>(esp_timer_get_time() / 1000ULL);
+}
+
+void SideButtons::emitSoloPress(bool is_left)
+{
+    const uint32_t now = nowMs();
+    uint32_t* last = is_left ? &left_cue_ms_ : &right_cue_ms_;
+    if (*last != 0 && (now - *last) < kPressCueCooldownMs) {
+        return;
+    }
+    *last = now;
+
+    if (is_left) {
+        logger.LOGI(TAG, "Left button PRESS (down cue)");
+        trigger_event(ButtonEvent::LEFT_PRESS);
+    } else {
+        logger.LOGI(TAG, "Right button PRESS (down cue)");
+        trigger_event(ButtonEvent::RIGHT_PRESS);
+    }
+}
+
 bool SideButtons::begin()
 {
     uint32_t hold_threshold = getHoldThresholdMs();
-    logger.LOGI(TAG, "Initializing side buttons using espressif/button component (Left: GPIO%d, Right: GPIO%d)...", 
+    logger.LOGI(TAG, "Initializing side buttons using espressif/button component (Left: GPIO%d, Right: GPIO%d)...",
                 left_pin_, right_pin_);
-    logger.LOGI(TAG, "Button configuration: ACTIVE_HIGH=%d, PULLUP=%d", 
+    logger.LOGI(TAG, "Button configuration: ACTIVE_HIGH=%d, PULLUP=%d",
                 HARDWARE_BUTTON_ACTIVE_HIGH, HARDWARE_BUTTON_PULLUP);
-    logger.LOGI(TAG, "Hold threshold: %lu ms (from %s)", 
+    logger.LOGI(TAG, "Hold threshold: %lu ms (from %s)",
                 hold_threshold, state ? "State config" : "default");
 
-    // Configure button parameters
     button_config_t button_cfg = {};
     button_cfg.type = BUTTON_TYPE_GPIO;
     button_cfg.long_press_time = hold_threshold;
     button_cfg.short_press_time = PRESS_THRESHOLD_MS;
     button_cfg.gpio_button_config.gpio_num = left_pin_;
-    
-    // Use hardware configuration for active level and pullup/pulldown
-    // The iot_button component automatically sets pullup/pulldown based on active_level:
-    // - active_level = 0 (active low) → pullup enabled automatically
-    // - active_level = 1 (active high) → pulldown enabled automatically
     button_cfg.gpio_button_config.active_level = HARDWARE_BUTTON_ACTIVE_HIGH;
-    
-    // Validate that HARDWARE_BUTTON_PULLUP matches expected behavior
-    // PULLUP=1 expects pullup (active_level=0) ✓
-    // PULLUP=0 expects pulldown (active_level=1) ✓
-    // If there's a mismatch, we disable pull and let external hardware handle it
+
     bool expects_pullup = (HARDWARE_BUTTON_PULLUP == 1);
     bool auto_pullup = (HARDWARE_BUTTON_ACTIVE_HIGH == 0);
-    
+
     if (expects_pullup != auto_pullup) {
-        // Mismatch: disable internal pull and rely on external pull resistors
-        logger.LOGW(TAG, "Button pull configuration mismatch: ACTIVE_HIGH=%d, PULLUP=%d. Disabling internal pull.", 
+        logger.LOGW(TAG, "Button pull configuration mismatch: ACTIVE_HIGH=%d, PULLUP=%d. Disabling internal pull.",
                     HARDWARE_BUTTON_ACTIVE_HIGH, HARDWARE_BUTTON_PULLUP);
         button_cfg.gpio_button_config.disable_pull = true;
     } else {
-        // Configuration matches automatic behavior - use it
         button_cfg.gpio_button_config.disable_pull = false;
     }
 
-    // Create left button
     left_button_handle = iot_button_create(&button_cfg);
     if (!left_button_handle) {
         logger.LOGE(TAG, "Failed to create left button handle");
         return false;
     }
-    
-    // Register callback for left button
+
     iot_button_register_cb(left_button_handle, BUTTON_PRESS_DOWN, left_button_cb, this);
     iot_button_register_cb(left_button_handle, BUTTON_PRESS_UP, left_button_cb, this);
     iot_button_register_cb(left_button_handle, BUTTON_SINGLE_CLICK, left_button_cb, this);
     iot_button_register_cb(left_button_handle, BUTTON_LONG_PRESS_START, left_button_cb, this);
-    iot_button_register_cb(left_button_handle, BUTTON_LONG_PRESS_HOLD, left_button_cb, this);
     iot_button_register_cb(left_button_handle, BUTTON_LONG_PRESS_UP, left_button_cb, this);
 
-    // Configure right button
     button_cfg.gpio_button_config.gpio_num = right_pin_;
-    
-    // Create right button
+
     right_button_handle = iot_button_create(&button_cfg);
     if (!right_button_handle) {
         logger.LOGE(TAG, "Failed to create right button handle");
@@ -121,16 +124,13 @@ bool SideButtons::begin()
         left_button_handle = nullptr;
         return false;
     }
-    
-    // Register callback for right button
+
     iot_button_register_cb(right_button_handle, BUTTON_PRESS_DOWN, right_button_cb, this);
     iot_button_register_cb(right_button_handle, BUTTON_PRESS_UP, right_button_cb, this);
     iot_button_register_cb(right_button_handle, BUTTON_SINGLE_CLICK, right_button_cb, this);
     iot_button_register_cb(right_button_handle, BUTTON_LONG_PRESS_START, right_button_cb, this);
-    iot_button_register_cb(right_button_handle, BUTTON_LONG_PRESS_HOLD, right_button_cb, this);
     iot_button_register_cb(right_button_handle, BUTTON_LONG_PRESS_UP, right_button_cb, this);
 
-    // Create timer for both hold detection
     esp_timer_create_args_t timer_args = {
         .callback = both_hold_timer_callback,
         .arg = this,
@@ -143,6 +143,10 @@ bool SideButtons::begin()
         logger.LOGE(TAG, "Failed to create both hold timer: %s", esp_err_to_name(err));
         return false;
     }
+
+    // Active-low + pull-up → expect 1 when released. 0 means stuck/active.
+    logger.LOGI(TAG, "Idle GPIO levels: left=%d right=%d (expect 1,1 released)",
+                gpio_get_level(left_pin_), gpio_get_level(right_pin_));
 
     m_initialized = true;
     logger.LOGI(TAG, "Side buttons initialized successfully");
@@ -176,14 +180,8 @@ void SideButtons::left_button_cb(void* button_handle, void* usr_data)
         return;
     }
     SideButtons* self = static_cast<SideButtons*>(usr_data);
-    if (!self) {
-        ESP_LOGE("SideButtons", "Failed to cast button callback usr_data");
-        return;
-    }
-    // Get the event type from the button handle
     button_event_t event = iot_button_get_event(static_cast<button_handle_t>(button_handle));
-    // Only log non-periodic events to reduce log spam
-    if (event != BUTTON_LONG_PRESS_HOLD) {
+    if (event != BUTTON_PRESS_DOWN && event != BUTTON_PRESS_UP) {
         ESP_LOGI("SideButtons", "Left button event: %d (%s)", event, iot_button_get_event_str(event));
     }
     self->handle_button_event(self->left_pin_, event);
@@ -196,14 +194,8 @@ void SideButtons::right_button_cb(void* button_handle, void* usr_data)
         return;
     }
     SideButtons* self = static_cast<SideButtons*>(usr_data);
-    if (!self) {
-        ESP_LOGE("SideButtons", "Failed to cast button callback usr_data");
-        return;
-    }
-    // Get the event type from the button handle
     button_event_t event = iot_button_get_event(static_cast<button_handle_t>(button_handle));
-    // Only log non-periodic events to reduce log spam
-    if (event != BUTTON_LONG_PRESS_HOLD) {
+    if (event != BUTTON_PRESS_DOWN && event != BUTTON_PRESS_UP) {
         ESP_LOGI("SideButtons", "Right button event: %d (%s)", event, iot_button_get_event_str(event));
     }
     self->handle_button_event(self->right_pin_, event);
@@ -211,161 +203,114 @@ void SideButtons::right_button_cb(void* button_handle, void* usr_data)
 
 void SideButtons::handle_button_event(gpio_num_t pin, button_event_t event)
 {
-    // Debug: Log that callback was received (but skip periodic LONG_PRESS_HOLD to reduce spam)
-    if (event != BUTTON_LONG_PRESS_HOLD) {
-        logger.LOGD(TAG, "Button event received: pin=%d, event=%d", pin, event);
-    }
-    
-    bool is_left = (pin == left_pin_);
-    
+    const bool is_left = (pin == left_pin_);
+
     switch (event) {
     case BUTTON_PRESS_DOWN:
         if (is_left) {
             left_button_pressed = true;
-            logger.LOGI(TAG, "Left button PRESS_DOWN");
+            logger.LOGD(TAG, "Left button PRESS_DOWN");
             trigger_event(ButtonEvent::LEFT_PRESS_DOWN);
         } else {
             right_button_pressed = true;
-            logger.LOGI(TAG, "Right button PRESS_DOWN");
+            logger.LOGD(TAG, "Right button PRESS_DOWN");
             trigger_event(ButtonEvent::RIGHT_PRESS_DOWN);
+        }
+        // Solo tap UI cue on DOWN — do not wait for SHORT click / PRESS_UP.
+        if (!(left_button_pressed && right_button_pressed)) {
+            emitSoloPress(is_left);
         }
         check_both_hold();
         break;
-        
-    case BUTTON_PRESS_UP:
+
+    case BUTTON_PRESS_UP: {
+        const bool was_both = both_hold_detected;
+
         if (is_left) {
             left_button_pressed = false;
-            logger.LOGI(TAG, "Left button PRESS_UP");
+            logger.LOGD(TAG, "Left button PRESS_UP");
             trigger_event(ButtonEvent::LEFT_PRESS_UP);
         } else {
             right_button_pressed = false;
-            logger.LOGI(TAG, "Right button PRESS_UP");
+            logger.LOGD(TAG, "Right button PRESS_UP");
             trigger_event(ButtonEvent::RIGHT_PRESS_UP);
         }
-        // Stop both hold timer if either button is released
+
         if (both_hold_timer) {
             esp_timer_stop(both_hold_timer);
         }
-        // Reset both hold detection flag
-        both_hold_detected = false;
-        // Check if we need to trigger BOTH_HOLD_UP
-        if (!left_button_pressed && !right_button_pressed && both_hold_detected) {
-            // Both buttons were held and now both are released
+        if (!left_button_pressed && !right_button_pressed && was_both) {
             trigger_event(ButtonEvent::BOTH_HOLD_UP);
-            both_hold_detected = false;
         }
+        both_hold_detected = false;
         break;
-        
+    }
+
     case BUTTON_SINGLE_CLICK:
-        if (is_left) {
-            logger.LOGI(TAG, "Left button PRESS (single click)");
-            trigger_event(ButtonEvent::LEFT_PRESS);
-        } else {
-            logger.LOGI(TAG, "Right button PRESS (single click)");
-            trigger_event(ButtonEvent::RIGHT_PRESS);
-        }
+        // Backup if PRESS_DOWN cue was skipped (cooldown / both-hold).
+        emitSoloPress(is_left);
         break;
-        
+
     case BUTTON_LONG_PRESS_START:
-        // Check if both buttons are pressed before triggering individual hold
-        // If both are pressed, we're in "both hold" mode - suppress individual holds
         if (left_button_pressed && right_button_pressed) {
-            // Both buttons are held - don't trigger individual hold events
-            // The BOTH_HOLD will be triggered by the timer callback
-            logger.LOGD(TAG, "Both buttons held - suppressing individual %s hold event", is_left ? "left" : "right");
-            // Ensure the both hold timer is running (but don't trigger BOTH_HOLD_DOWN again)
+            logger.LOGD(TAG, "Both buttons held - suppressing individual %s hold event",
+                        is_left ? "left" : "right");
             if (both_hold_timer && !esp_timer_is_active(both_hold_timer)) {
-                logger.LOGD(TAG, "Starting both hold timer");
                 esp_timer_start_once(both_hold_timer, getHoldThresholdMs() * 1000);
             }
+        } else if (is_left && right_button_pressed) {
+            if (both_hold_timer && !esp_timer_is_active(both_hold_timer)) {
+                esp_timer_start_once(both_hold_timer, getHoldThresholdMs() * 1000);
+            }
+        } else if (!is_left && left_button_pressed) {
+            if (both_hold_timer && !esp_timer_is_active(both_hold_timer)) {
+                esp_timer_start_once(both_hold_timer, getHoldThresholdMs() * 1000);
+            }
+        } else if (is_left) {
+            logger.LOGI(TAG, "Left button HOLD started");
+            trigger_event(ButtonEvent::LEFT_HOLD);
         } else {
-            // Only one button is held - trigger individual hold event
-            // But first check if the other button might be in the process of being held
-            if (is_left && right_button_pressed) {
-                // Left hold started, but right is also pressed - wait for right's LONG_PRESS_START
-                logger.LOGD(TAG, "Left hold started but right is also pressed - waiting for both hold");
-                if (both_hold_timer && !esp_timer_is_active(both_hold_timer)) {
-                    esp_timer_start_once(both_hold_timer, getHoldThresholdMs() * 1000);
-                }
-            } else if (!is_left && left_button_pressed) {
-                // Right hold started, but left is also pressed - wait for left's LONG_PRESS_START
-                logger.LOGD(TAG, "Right hold started but left is also pressed - waiting for both hold");
-                if (both_hold_timer && !esp_timer_is_active(both_hold_timer)) {
-                    esp_timer_start_once(both_hold_timer, getHoldThresholdMs() * 1000);
-                }
-            } else {
-                // Only one button is held - trigger individual hold event
-                if (is_left) {
-                    logger.LOGI(TAG, "Left button HOLD started");
-                    trigger_event(ButtonEvent::LEFT_HOLD);
-                } else {
-                    logger.LOGI(TAG, "Right button HOLD started");
-                    trigger_event(ButtonEvent::RIGHT_HOLD);
-                }
-            }
+            logger.LOGI(TAG, "Right button HOLD started");
+            trigger_event(ButtonEvent::RIGHT_HOLD);
         }
         break;
-        
-    case BUTTON_LONG_PRESS_HOLD:
-        // Periodic event during long press
-        // If both buttons are held, suppress these events (we're waiting for BOTH_HOLD from timer)
-        if (left_button_pressed && right_button_pressed) {
-            // Both buttons are held - suppress individual LONG_PRESS_HOLD events
-            // The BOTH_HOLD will be triggered by the timer callback
-            // Just ensure timer is running (silently, no logging)
-            if (both_hold_timer && !esp_timer_is_active(both_hold_timer)) {
-                esp_timer_start_once(both_hold_timer, getHoldThresholdMs() * 1000);
-            }
-            // Don't process further - suppress this event (exit early from switch)
-            break;
-        }
-        // Only one button held - this is normal, but we don't need to do anything
-        // (the individual hold was already triggered in LONG_PRESS_START)
-        break;
-        
+
     case BUTTON_LONG_PRESS_UP:
         if (is_left) {
-            logger.LOGD(TAG, "Left button HOLD released");
             left_button_pressed = false;
+            logger.LOGD(TAG, "Left button HOLD released");
         } else {
-            logger.LOGD(TAG, "Right button HOLD released");
             right_button_pressed = false;
+            logger.LOGD(TAG, "Right button HOLD released");
         }
-        // Stop both hold timer if either button is released
         if (both_hold_timer) {
             esp_timer_stop(both_hold_timer);
         }
-        // Check if we need to trigger BOTH_HOLD_UP
         if (!left_button_pressed && !right_button_pressed && both_hold_detected) {
             trigger_event(ButtonEvent::BOTH_HOLD_UP);
-            both_hold_detected = false;
         }
+        both_hold_detected = false;
         break;
-        
+
     default:
-        logger.LOGD(TAG, "Unhandled button event: %d", event);
         break;
     }
 }
 
 void SideButtons::check_both_hold()
 {
-    // Check if both buttons are pressed
     if (left_button_pressed && right_button_pressed) {
-        // Both buttons are pressed - trigger BOTH_HOLD_DOWN only once
         if (!both_hold_detected) {
             logger.LOGI(TAG, "Both buttons pressed - BOTH_HOLD_DOWN");
             trigger_event(ButtonEvent::BOTH_HOLD_DOWN);
             both_hold_detected = true;
         }
-        
-        // Start timer for combined hold (after threshold)
+
         if (both_hold_timer && !esp_timer_is_active(both_hold_timer)) {
             logger.LOGD(TAG, "Both buttons pressed - starting combined hold timer");
-            esp_timer_start_once(both_hold_timer, getHoldThresholdMs() * 1000);  // Convert to microseconds
+            esp_timer_start_once(both_hold_timer, getHoldThresholdMs() * 1000);
         }
     } else {
-        // Not both pressed - stop timer and reset flag
         if (both_hold_timer) {
             esp_timer_stop(both_hold_timer);
         }
@@ -378,9 +323,6 @@ void SideButtons::both_hold_timer_callback(void* arg)
     SideButtons* self = static_cast<SideButtons*>(arg);
     if (self && self->left_button_pressed && self->right_button_pressed && self->both_hold_detected) {
         self->logger.LOGI(self->TAG, "Both buttons HOLD detected - triggering BOTH_HOLD");
-        // Do not beep here: Buzzer::beep()/play() used to call stop() which
-        // clearPending() + stopPatternTimer(), killing the personal/fire siren
-        // that BOTH_HOLD queues. Alert audio is the feedback.
         self->trigger_event(ButtonEvent::BOTH_HOLD);
     }
 }
@@ -401,11 +343,14 @@ void SideButtons::trigger_event(ButtonEvent event)
         case ButtonEvent::BOTH_HOLD: event_name = "BOTH_HOLD"; break;
         case ButtonEvent::BOTH_HOLD_UP: event_name = "BOTH_HOLD_UP"; break;
     }
-    logger.LOGI(TAG, "Triggering event: %s (callback=%s)", event_name, event_callback ? "set" : "null");
+    const bool noisy = (event == ButtonEvent::LEFT_PRESS_DOWN ||
+                        event == ButtonEvent::LEFT_PRESS_UP ||
+                        event == ButtonEvent::RIGHT_PRESS_DOWN ||
+                        event == ButtonEvent::RIGHT_PRESS_UP);
+    if (!noisy) {
+        logger.LOGI(TAG, "Triggering event: %s (callback=%s)", event_name, event_callback ? "set" : "null");
+    }
     if (event_callback) {
         event_callback(event);
-        logger.LOGD(TAG, "Event callback completed for: %s", event_name);
-    } else {
-        logger.LOGW(TAG, "No event callback registered for: %s", event_name);
     }
 }

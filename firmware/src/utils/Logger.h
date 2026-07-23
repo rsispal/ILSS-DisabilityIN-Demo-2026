@@ -22,6 +22,9 @@ public:
     /** Non-blocking sink for GATT Log characteristic (may drop under load). */
     void setBleLogSink(BleLogSink sink) { ble_sink_ = std::move(sink); }
     void clearBleLogSink() { ble_sink_ = nullptr; }
+    /** Mute GATT log notifies (USB ESP_LOG still works). Use during fire/PA alerts. */
+    void setBleFanoutEnabled(bool enabled) { ble_fanout_enabled_ = enabled; }
+    bool bleFanoutEnabled() const { return ble_fanout_enabled_; }
 
     void LOGI(const char* tag, const char* fmt, ...);
     void LOGD(const char* tag, const char* fmt, ...);
@@ -46,6 +49,7 @@ public:
 private:
     LogLevel logLevel_;
     BleLogSink ble_sink_;
+    bool ble_fanout_enabled_ = true;
 
     bool shouldLog(LogLevel level) const;
     void logMessage(const char* tag, LogLevel level, const char* fmt, va_list args) const;

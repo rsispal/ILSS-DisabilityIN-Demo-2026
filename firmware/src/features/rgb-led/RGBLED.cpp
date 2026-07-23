@@ -28,14 +28,15 @@ bool RGBLED::begin()
         return true;
     }
     
-    logger.LOGI(TAG, "Initializing WS2813 LED strip...");
+    logger.LOGI(TAG, "Initializing SK6812 LED strip (%d pixels)...", NUM_PIXELS);
 
-    // LED strip configuration
+    // DisabilityIn PCB: 10x Adafruit SK6812 side-light (GRB). Use SK6812 timings —
+    // WS2812 bit timing often only lights the first 1–2 pixels of an SK6812 chain.
     led_strip_config_t strip_config = {
         .strip_gpio_num = HARDWARE_LED_STRIP_PIN,
         .max_leds = NUM_PIXELS,
         .led_pixel_format = LED_PIXEL_FORMAT_GRB,
-        .led_model = LED_MODEL_WS2812,
+        .led_model = LED_MODEL_SK6812,
     };
 
     // RMT configuration
@@ -166,8 +167,8 @@ void RGBLED::process()
         case LedEffect::WATER_DROP:
             updateWaterDropEffect(now);
             break;
-        case LedEffect::TWINKLE:
-            updateTwinkleEffect(now);
+        case LedEffect::STAGGER_PULSE:
+            updateStaggerPulseEffect(now);
             break;
     }
 
@@ -234,14 +235,19 @@ void RGBLED::updateBlinkAlternateEffect(uint32_t now)
 
 void RGBLED::updateHalfHalfEffect(uint32_t now)
 {
-    // Web half: top vs bottom, 1.0s period, 50% duty, off-state opacity ~0.04.
+    // Web half: geometric top vs bottom of the DisabilityIn ring, 1.0s period,
+    // 50% duty, off-state opacity ~0.04.
+    // Ring (1-based, clockwise from bottom-left → bottom-middle):
+    //   upper: LEDs 3–7  |  bottom: LEDs 1,2,8,9,10
+    // Linear index mid-split looked like a corner-to-corner diagonal.
     const uint32_t period_ms = 1000;
-    const bool first_half_on = (now % period_ms) < (period_ms / 2);
-    const uint8_t mid = NUM_PIXELS / 2;
+    const bool upper_on = (now % period_ms) < (period_ms / 2);
 
     if (!led_strip) return;
     for (uint8_t i = 0; i < NUM_PIXELS; i++) {
-        const bool on = (i < mid) ? first_half_on : !first_half_on;
+        const uint8_t led_1based = static_cast<uint8_t>(i + 1);
+        const bool is_upper = (led_1based >= 3 && led_1based <= 7);
+        const bool on = is_upper ? upper_on : !upper_on;
         const float intensity = on ? 1.0f : 0.04f;
         uint8_t r, g, b;
         getColorWithBrightness(current_effect.color, current_effect.brightness, intensity, &r, &g, &b);
@@ -264,10 +270,16 @@ void RGBLED::updateFlashEffect(uint32_t now, uint32_t period)
 
 void RGBLED::updateSingleFlashEffect(uint32_t now, uint32_t period)
 {
-    // One centre pixel, brief pulse, then dark for the rest of the period.
+    // DisabilityIn ring (1-based, clockwise from bottom-left):
+    //   LED1 bottom-left … LED10 bottom-middle.
+    // Unpaired BLE idle flash sits on LED5 (0-based index 4) — not geometric centre
+    // (NUM_PIXELS/2 → index 5 → LED6).
     const uint32_t on_ms = 120;
     const bool on = (now % period) < on_ms;
-    const uint8_t pixel = NUM_PIXELS / 2;
+    constexpr uint8_t kUnpairedFlashLed1Based = 5;
+    const uint8_t pixel = (NUM_PIXELS >= kUnpairedFlashLed1Based)
+                              ? static_cast<uint8_t>(kUnpairedFlashLed1Based - 1)
+                              : static_cast<uint8_t>(NUM_PIXELS / 2);
 
     if (!led_strip) return;
     led_strip_clear(led_strip);
@@ -421,37 +433,37 @@ void RGBLED::updateWaterDropEffect(uint32_t now)
     }
 }
 
-void RGBLED::updateTwinkleEffect(uint32_t now)
+void RGBLED::updateStaggerPulseEffect(uint32_t now)
 {
-    if (!led_strip) return;
+    if (!led_strip || NUM_PIXELS == 0) return;
 
-    // Honeywell brand: white + red starfield only.
-    static const LedColor kStarColors[] = { LedColor::WHITE, LedColor::RED };
-    constexpr size_t kNumColors = sizeof(kStarColors) / sizeof(kStarColors[0]);
-
+    // Soft staggered breathe: odd LEDs white, even LEDs red, phase-offset
+    // around the ring (LED1 bottom-left → clockwise → LED10).
     const uint32_t elapsed = now - current_effect.start_time;
-    // Fade envelope over the effect duration (default ~1.8s).
     const uint32_t dur = current_effect.duration > 0 ? current_effect.duration : 1800;
+    constexpr float kPeriodMs = 900.0f;  // one gentle breath cycle
+
     float envelope = 1.0f;
-    if (elapsed > dur * 2 / 3) {
-        envelope = 1.0f - static_cast<float>(elapsed - dur * 2 / 3) / static_cast<float>(dur / 3);
-        if (envelope < 0.0f) envelope = 0.0f;
-    } else if (elapsed < 200) {
+    if (elapsed < 200) {
         envelope = static_cast<float>(elapsed) / 200.0f;
+    } else if (elapsed + 350 > dur) {
+        const uint32_t remain = (elapsed < dur) ? (dur - elapsed) : 0;
+        envelope = static_cast<float>(remain) / 350.0f;
     }
 
     for (uint8_t i = 0; i < NUM_PIXELS; i++) {
-        // Deterministic per-pixel phase so it looks organic without RNG.
-        const float phase = (elapsed * 0.0045f) + (i * 1.7f) + ((i * 37) % 11) * 0.35f;
-        float twinkle = 0.5f + 0.5f * sinf(phase);
-        // Sharpen peaks so most LEDs stay dim (star-like).
-        twinkle = twinkle * twinkle;
-        twinkle *= envelope * 0.7f;
+        // Spread peaks evenly around the ring so neighbours don't crest together.
+        const float phase =
+            (static_cast<float>(elapsed) / kPeriodMs) * 2.0f * static_cast<float>(M_PI) +
+            (static_cast<float>(i) * 2.0f * static_cast<float>(M_PI) / static_cast<float>(NUM_PIXELS));
+        // Ease: mostly mid-low with soft peaks (avoid harsh full-on flashes).
+        float wave = 0.5f + 0.5f * sinf(phase);
+        wave = wave * wave;  // favour dimmer dwell
+        const float intensity = (0.12f + 0.55f * wave) * envelope;
 
-        // Alternate white/red by pixel; slowly swap which set is which.
-        const LedColor c = kStarColors[(i + (elapsed / 400)) % kNumColors];
+        const LedColor c = (i & 1) ? LedColor::RED : LedColor::WHITE;
         uint8_t r, g, b;
-        getColorWithBrightness(c, current_effect.brightness, twinkle, &r, &g, &b);
+        getColorWithBrightness(c, current_effect.brightness, intensity, &r, &g, &b);
         led_strip_set_pixel(led_strip, i, r, g, b);
     }
 
@@ -480,10 +492,10 @@ void RGBLED::setAllPixels(uint8_t r, uint8_t g, uint8_t b)
         logger.LOGE(TAG, "Failed to refresh LED strip: %s", esp_err_to_name(ret));
     }
     
-    // Only log every 50th update to avoid spam
+    // DEBUG only — INFO + BLE log fan-out during pulse/alerts congests the link.
     static int update_count = 0;
     if (++update_count % 50 == 0) {
-        logger.LOGI(TAG, "LED update #%d: R=%d G=%d B=%d", update_count, r, g, b);
+        logger.LOGD(TAG, "LED update #%d: R=%d G=%d B=%d", update_count, r, g, b);
     }
 }
 
@@ -497,33 +509,35 @@ void RGBLED::getColorWithBrightness(LedColor color, Brightness brightness, float
     float bright_factor = (static_cast<int>(brightness) + 1) * 5 / 100.0f;
     intensity *= bright_factor;
 
-    // Apply color
+    // Apply color. R/G/B stay true primaries (no channel mix). Mixed hues are
+    // tuned slightly more saturated than the web palette so SK6812s read as
+    // vibrant as the simulator swatches (web: purple 178,84,255 / orange
+    // 255,138,36 / yellow 255,210,40).
     switch (color) {
-        // Colors matched to web COLORS palette
         case LedColor::RED:
             *r = static_cast<uint8_t>(255 * intensity);
-            *g = static_cast<uint8_t>(0 * intensity);
-            *b = static_cast<uint8_t>(0 * intensity);
+            *g = 0;
+            *b = 0;
             break;
         case LedColor::GREEN:
-            *r = static_cast<uint8_t>(0 * intensity);
+            *r = 0;
             *g = static_cast<uint8_t>(255 * intensity);
-            *b = static_cast<uint8_t>(0 * intensity);
+            *b = 0;
             break;
         case LedColor::BLUE:
-            *r = static_cast<uint8_t>(0 * intensity);
-            *g = static_cast<uint8_t>(0 * intensity);
+            *r = 0;
+            *g = 0;
             *b = static_cast<uint8_t>(255 * intensity);
             break;
         case LedColor::PURPLE:
-            *r = static_cast<uint8_t>(178 * intensity);
-            *g = static_cast<uint8_t>(84 * intensity);
+            *r = static_cast<uint8_t>(210 * intensity);
+            *g = static_cast<uint8_t>(40 * intensity);
             *b = static_cast<uint8_t>(255 * intensity);
             break;
         case LedColor::YELLOW:
             *r = static_cast<uint8_t>(255 * intensity);
-            *g = static_cast<uint8_t>(210 * intensity);
-            *b = static_cast<uint8_t>(40 * intensity);
+            *g = static_cast<uint8_t>(220 * intensity);
+            *b = 0;
             break;
         case LedColor::CYAN:  // teal on web
             *r = static_cast<uint8_t>(22 * intensity);
@@ -537,8 +551,8 @@ void RGBLED::getColorWithBrightness(LedColor color, Brightness brightness, float
             break;
         case LedColor::ORANGE:
             *r = static_cast<uint8_t>(255 * intensity);
-            *g = static_cast<uint8_t>(138 * intensity);
-            *b = static_cast<uint8_t>(36 * intensity);
+            *g = static_cast<uint8_t>(110 * intensity);
+            *b = 0;
             break;
     }
 }

@@ -116,11 +116,13 @@ private:
     bool pairing_notify_enabled_ = false;
 
     char serial_[32] = "ILSS-LY-0000";
-    char model_[32] = "ILSS-Lanyard-Breakout";
+    char model_[40] = "ILSS-Lanyard";  // overridden via setModel(HARDWARE_MODEL_NAME)
     char sw_version_[32] = "0.1.0";
     uint8_t brand_ = 1;
     uint8_t battery_ = 100;
     uint8_t status_bytes_[7]{};
+
+    bool conn_param_retried_ = false;
 
     static BluetoothLowLevelDriver* s_instance;
     static void hostTask(void* param);
@@ -129,4 +131,6 @@ private:
     static int onGapEvent(struct ble_gap_event* event, void* arg);
     static int gattAccess(uint16_t conn_handle, uint16_t attr_handle,
                           struct ble_gatt_access_ctxt* ctxt, void* arg);
+    void requestPreferredConnParams(uint16_t conn_handle, bool conservative);
+    void logConnParams(uint16_t conn_handle, const char* why);
 };

@@ -53,6 +53,14 @@ config ILSS_HAPTICS_LOG_LEVEL
       0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
       Set to 4 for detailed haptics operation logging, 3 for normal operation
 
+config ILSS_CRYPTO_LOG_LEVEL
+    int "ATECC608B / Crypto log level"
+    default 3
+    range 0 4
+    help
+      Log level for ATECC608B driver and Crypto feature
+      0 = OFF, 1 = ERROR, 2 = WARNING, 3 = INFO, 4 = DEBUG
+
 config ILSS_TIMER_LOG_LEVEL
     int "Timer driver log level"
     default 3

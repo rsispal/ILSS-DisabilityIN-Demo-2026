@@ -48,7 +48,8 @@ void BootSequence::playPowerUpCue() {
     };
 
     if (led_ok) {
-        rgbLed_->queueEffect(LedEffect::TWINKLE, LedColor::WHITE, Brightness::B80, 1800);
+        // Soft staggered white/red breathe around the ring.
+        rgbLed_->queueEffect(LedEffect::STAGGER_PULSE, LedColor::WHITE, Brightness::B60, 1800);
     }
 
     if (buzzer_ && !buzzer_->isReady()) {

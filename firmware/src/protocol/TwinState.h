@@ -87,7 +87,7 @@ struct TwinState {
         s.haptic = TwinHaptic::Off;
         s.buzzer = TwinBuzzer::Silent;
         s.flags = 0;
-        s.brightness = 40;
+        s.brightness = 10;
         return s;
     }
 

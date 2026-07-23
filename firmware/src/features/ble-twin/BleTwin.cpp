@@ -4,6 +4,7 @@
 #include "../../application/IndicationController/IndicationController.h"
 #include "../../state/State.h"
 #include "../../lowlevel/LowLevel.h"
+#include "../../application/Hardware.h"
 #include "esp_app_desc.h"
 #include "esp_timer.h"
 #include "esp_partition.h"
@@ -64,6 +65,9 @@ bool BleTwin::begin(const char* adv_name) {
     if (app) {
         ble_->setSwVersion(app->version);
     }
+#ifdef HARDWARE_MODEL_NAME
+    ble_->setModel(HARDWARE_MODEL_NAME);
+#endif
     ble_->setBattery(state_->getBatteryLevel() ? state_->getBatteryLevel() : 100);
 
     // Provisioned serial from ble_prov wins for Chrome picker / advertising name.
@@ -100,8 +104,31 @@ bool BleTwin::isConnected() const {
     return ble_ && ble_->isConnected();
 }
 
+void BleTwin::drainPendingTwinApply() {
+    if (!pending_twin_apply_) return;
+    pending_twin_apply_ = false;
+
+    const ilss::TwinState desired = pending_twin_;
+    const ilss::Packet req = pending_twin_req_;
+    ilss::TwinNakReason reason = ilss::TwinNakReason::None;
+    bool ok = false;
+    if (on_twin_) {
+        ok = on_twin_(desired, &reason);
+    } else if (indications_) {
+        ok = indications_->apply(desired, &reason);
+    }
+    sendAck(req, !ok, static_cast<uint8_t>(reason));
+    if (ok) {
+        publishStatus(indications_->current());
+        std::memcpy(master_uuid_, req.from, 16);
+    }
+}
+
 void BleTwin::process() {
     if (!ble_) return;
+
+    // Apply twin state here (app task), not on the NimBLE host/GATT path.
+    drainPendingTwinApply();
 
     // Rising edge on Status CCCD — push once from app task (never from GAP).
     if (ble_->statusNotifyEnabled() && !status_cccd_seen_) {
@@ -152,6 +179,8 @@ void BleTwin::emitHeartbeatPoll() {
     heartbeat_.markPollSent(pkt.message_id, nowMs());
     sendPacket(pkt, true);
     logger_->LOGI(TAG, "Heartbeat poll TX msgId=%u", heartbeat_.pendingMsgId());
+    // Match web virtual lanyard: brief green LED pulse on device→web poll.
+    if (indications_) indications_->showHeartbeatPulse();
 }
 
 void BleTwin::failHeartbeat(const char* why) {
@@ -171,6 +200,7 @@ void BleTwin::handleInboundAck(const ilss::Packet& pkt) {
 
 void BleTwin::onConnection(bool connected, uint16_t /*conn*/) {
     if (!connected) {
+        pending_twin_apply_ = false;
         paired_ = false;
         encrypt_enabled_ = false;
         status_cccd_seen_ = false;
@@ -270,22 +300,16 @@ void BleTwin::handleCommandPacket(const ilss::Packet& pkt) {
             std::memcpy(rpl.to, pkt.from, 16);
             sendPacket(rpl, true);
             sendAck(pkt, false);
+            // Web→device poll — same alive cue as outbound device poll.
+            if (indications_) indications_->showHeartbeatPulse();
             return;
         }
         if (pkt.code == ilss::APP_CODE_TWIN_STATE) {
-            auto desired = ilss::TwinState::unpack(pkt.data, pkt.data_len);
-            ilss::TwinNakReason reason = ilss::TwinNakReason::None;
-            bool ok = false;
-            if (on_twin_) {
-                ok = on_twin_(desired, &reason);
-            } else {
-                ok = indications_->apply(desired, &reason);
-            }
-            sendAck(pkt, !ok, static_cast<uint8_t>(reason));
-            if (ok) {
-                publishStatus(indications_->current());
-                std::memcpy(master_uuid_, pkt.from, 16);
-            }
+            // Defer apply + ACK to process() so LED/buzzer/haptic setup never
+            // runs on the NimBLE host task (supervision timeouts under alert EMI).
+            pending_twin_ = ilss::TwinState::unpack(pkt.data, pkt.data_len);
+            pending_twin_req_ = pkt;
+            pending_twin_apply_ = true;
             return;
         }
         if (pkt.code == ilss::APP_CODE_PAIRING) {

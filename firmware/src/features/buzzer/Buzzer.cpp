@@ -312,7 +312,7 @@ void Buzzer::playAlternating(uint32_t low_freq, uint32_t high_freq, uint32_t cyc
     }
 }
 
-void Buzzer::playMediumSweep(uint32_t low_freq, uint32_t high_freq, uint32_t cycles)
+void Buzzer::playMediumSweep(uint32_t low_freq, uint32_t high_freq, uint32_t cycles, uint32_t cycle_ms)
 {
     if (!lowLevel || !lowLevel->get_buzzer().isReady())
     {
@@ -322,9 +322,15 @@ void Buzzer::playMediumSweep(uint32_t low_freq, uint32_t high_freq, uint32_t cyc
     // Reset stop flag at start
     shouldStop.store(false, std::memory_order_relaxed);
 
-    const uint32_t cycle_ms = 1000;                                // 1 Hz = 1000ms cycle
+    // bs-sweep ≈ 1000ms; bs-fast-sweep ≈ 150ms per upward sweep.
+    if (cycle_ms < 40) {
+        cycle_ms = 40;
+    }
     const uint32_t step_ms = 20;                                   // 20ms steps for smooth sweep
-    const uint32_t steps = cycle_ms / step_ms;                     // Steps per cycle (upward only)
+    uint32_t steps = cycle_ms / step_ms;                           // Steps per cycle (upward only)
+    if (steps < 2) {
+        steps = 2;
+    }
     const float freq_step = (high_freq - low_freq) / (float)steps; // Frequency increment per step
 
     if (cycles == 0)
@@ -994,13 +1000,14 @@ void Buzzer::queueLFBuzz(uint32_t low_freq, uint32_t high_freq, uint32_t cycles)
     pendingCycles.store(cycles, std::memory_order_relaxed);
 }
 
-void Buzzer::queueMediumSweep(uint32_t low_freq, uint32_t high_freq, uint32_t cycles)
+void Buzzer::queueMediumSweep(uint32_t low_freq, uint32_t high_freq, uint32_t cycles, uint32_t cycle_ms)
 {
     // Safe to call from interrupt context - use atomic operations
     pendingMediumSweep.store(1, std::memory_order_relaxed);
     pendingFreq.store(low_freq, std::memory_order_relaxed);
     pendingDuration.store(high_freq, std::memory_order_relaxed); // Reuse for high_freq
     pendingCycles.store(cycles, std::memory_order_relaxed);
+    pendingCycleMs.store(cycle_ms, std::memory_order_relaxed);
 }
 
 void Buzzer::queueAlternating(uint32_t low_freq, uint32_t high_freq, uint32_t cycles)
@@ -1094,7 +1101,8 @@ bool Buzzer::processPendingBuzzer()
         uint32_t low_freq = pendingFreq.load(std::memory_order_relaxed);
         uint32_t high_freq = pendingDuration.load(std::memory_order_relaxed);
         uint32_t cycles = pendingCycles.load(std::memory_order_relaxed);
-        playMediumSweep(low_freq, high_freq, cycles);
+        uint32_t cycle_ms = pendingCycleMs.load(std::memory_order_relaxed);
+        playMediumSweep(low_freq, high_freq, cycles, cycle_ms);
         return true;
     }
 

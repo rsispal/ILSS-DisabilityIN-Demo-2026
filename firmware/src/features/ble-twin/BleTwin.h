@@ -95,10 +95,16 @@ private:
     bool status_cccd_seen_ = false;
     BleHeartbeat heartbeat_;
 
+    /** Twin-state apply deferred off NimBLE GATT/host onto process()/app task. */
+    volatile bool pending_twin_apply_ = false;
+    ilss::TwinState pending_twin_{};
+    ilss::Packet pending_twin_req_{};
+
     void onWrite(uint16_t handle, const uint8_t* data, size_t len);
     void onConnection(bool connected, uint16_t conn);
     void handleCommandPacket(const ilss::Packet& pkt);
     void handleInboundAck(const ilss::Packet& pkt);
+    void drainPendingTwinApply();
     void failHeartbeat(const char* why);
     void sendAck(const ilss::Packet& req, bool nak, uint8_t reason = 0);
     void sendPacket(ilss::Packet& pkt, bool as_event);

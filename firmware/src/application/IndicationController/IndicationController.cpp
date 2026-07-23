@@ -38,7 +38,9 @@ void IndicationController::goIdle() {
     if (buzzer_) buzzer_->stop();
     if (haptics_) haptics_->stop();
     haptic_period_ms_ = 0;
+    haptic_start_pending_ = false;
     connected_flash_until_ms_ = 0;
+    if (logger_) logger_->setBleFanoutEnabled(true);
     // Only paint idle green when already in Connected mode; otherwise
     // leave Unpaired/Pairing link cues alone (caller switches link mode).
     if (link_mode_ == LinkLedMode::Connected) {
@@ -50,8 +52,10 @@ void IndicationController::standDownToUnpaired() {
     logger_->LOGI(TAG, "Stand-down → unpaired (clear alerts, stop indications)");
     current_ = ilss::TwinState::idle();
     haptic_period_ms_ = 0;
+    haptic_start_pending_ = false;
     connected_flash_until_ms_ = 0;
     link_mode_ = LinkLedMode::Unpaired;
+    if (logger_) logger_->setBleFanoutEnabled(true);
 
     if (buzzer_) {
         buzzer_->requestStop();
@@ -79,6 +83,21 @@ void IndicationController::showConnectedFlash() {
     // Brief all-green flash, then process() restores idle at 10%.
     rgbLed_->queueEffect(LedEffect::CONTINUOUS, LedColor::GREEN, Brightness::B100, 450);
     logger_->LOGI(TAG, "Connected flash (green)");
+}
+
+void IndicationController::showHeartbeatPulse() {
+    if (!rgbLed_ || !state_->getEnableLedIndications()) return;
+    if (link_mode_ != LinkLedMode::Connected) return;
+    // Never steal the strip during fire / personal attention patterns.
+    if (current_.alert != ilss::TwinAlert::None) return;
+
+    connected_flash_until_ms_ = nowMs() + kHeartbeatPulseMs;
+    // Gentle bump (idle is 10%) — mirrors web .hb-pulse ~550ms ease-out.
+    rgbLed_->queueEffect(LedEffect::CONTINUOUS, LedColor::GREEN,
+                         pctToBrightness(kHwHeartbeatPulsePct), kHeartbeatPulseMs);
+    logger_->LOGD(TAG, "Heartbeat pulse (green %u%% %lums)",
+                  static_cast<unsigned>(kHwHeartbeatPulsePct),
+                  static_cast<unsigned long>(kHeartbeatPulseMs));
 }
 
 void IndicationController::applyLinkLed() {
@@ -130,6 +149,11 @@ bool IndicationController::apply(const ilss::TwinState& desired, ilss::TwinNakRe
     if (link_mode_ != LinkLedMode::Connected) {
         link_mode_ = LinkLedMode::Connected;
     }
+    // During fire/personal, mute GATT log notifies — buzzer/haptic EMI already
+    // stresses the radio; log traffic makes supervision timeouts more likely.
+    if (logger_) {
+        logger_->setBleFanoutEnabled(current_.alert == ilss::TwinAlert::None);
+    }
     driveLed(current_);
     driveBuzzer(current_);
     driveHaptic(current_);
@@ -175,8 +199,8 @@ void IndicationController::driveLed(const ilss::TwinState& s) {
         case ilss::TwinLed::Off: effect = LedEffect::OFF; break;
     }
 
-    // Prefer twin brightness (0–100 /10). Connected idle green is forced dim
-    // on the physical strip only (web twin may still report 40%).
+    // Prefer twin brightness (0–100 /10). Connected idle green is forced to
+    // kHwIdleGreenPct on the physical strip (matches TwinState::idle() = 10%).
     uint8_t pct = s.brightness;
     if (pct > 100) pct = 100;
     pct = static_cast<uint8_t>((pct / 10) * 10);
@@ -227,12 +251,14 @@ void IndicationController::driveBuzzer(const ilss::TwinState& s) {
             buzzer_->queueAlternating(1000, 740, 0);
             break;
         case ilss::TwinBuzzer::BsSweep:
+            // Web ilssAudio: 800→970 over 1000 ms, looped.
             buzzer_->requestStop();
-            buzzer_->queueMediumSweep(800, 970, 4);
+            buzzer_->queueMediumSweep(800, 970, 0, 1000);
             break;
         case ilss::TwinBuzzer::BsFastSweep:
+            // Same 800→970 band as BS sweep, ~150 ms per rise (≈2× prior 300 ms).
             buzzer_->requestStop();
-            buzzer_->queueMediumSweep(800, 970, 2);
+            buzzer_->queueMediumSweep(800, 970, 0, 150);
             break;
         case ilss::TwinBuzzer::LfBuzz:
             buzzer_->requestStop();
@@ -246,14 +272,31 @@ void IndicationController::driveBuzzer(const ilss::TwinState& s) {
 }
 
 void IndicationController::driveHaptic(const ilss::TwinState& s) {
-    if (!haptics_ || !state_->getEnableHaptics()) return;
-    last_haptic_ms_ = nowMs();
+    if (!haptics_ || !state_->getEnableHaptics()) {
+        haptic_start_pending_ = false;
+        haptic_period_ms_ = 0;
+        return;
+    }
+    // Do not touch I2C here — apply() may run on the NimBLE host task.
     haptic_period_ms_ = haptics_->loopPeriodMs(s.haptic);
-    haptics_->play(s.haptic);
+    haptic_start_pending_ = true;
 }
 
 void IndicationController::updateHapticPulse() {
-    if (haptic_period_ms_ == 0 || !haptics_ || !state_->getEnableHaptics()) return;
+    if (!haptics_ || !state_->getEnableHaptics()) return;
+
+    if (haptic_start_pending_) {
+        haptic_start_pending_ = false;
+        last_haptic_ms_ = nowMs();
+        if (current_.haptic == ilss::TwinHaptic::Off) {
+            haptics_->stop();
+        } else {
+            haptics_->play(current_.haptic);
+        }
+        return;
+    }
+
+    if (haptic_period_ms_ == 0) return;
     const uint32_t now = nowMs();
     if ((now - last_haptic_ms_) < haptic_period_ms_) return;
     last_haptic_ms_ = now;

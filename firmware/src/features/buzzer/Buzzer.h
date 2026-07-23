@@ -41,7 +41,9 @@ public:
 
     // Pattern methods
     void playAlternating(uint32_t low_freq = 800, uint32_t high_freq = 970, uint32_t cycles = 0);
-    void playMediumSweep(uint32_t low_freq = 800, uint32_t high_freq = 970, uint32_t cycles = 4);
+    /** BS sweep: upward 800→970. cycle_ms is one sweep duration (1000 / fast ~150). */
+    void playMediumSweep(uint32_t low_freq = 800, uint32_t high_freq = 970,
+                         uint32_t cycles = 4, uint32_t cycle_ms = 1000);
     void playSiren(uint32_t low_freq = 800, uint32_t high_freq = 970, uint32_t cycles = 14);
     void playCode3Temporal(uint32_t freq = 3000, uint32_t cycles = 0);
     void playCode3Sweep(uint32_t low_freq = 2700, uint32_t high_freq = 3500, uint32_t cycles = 0);
@@ -62,7 +64,8 @@ public:
     void queueBeep(uint32_t freq = 2000, uint32_t duration_ms = 1000);
     void queueTick(uint32_t freq = 2000);
     void queueLFBuzz(uint32_t low_freq = 800, uint32_t high_freq = 970, uint32_t cycles = 100);
-    void queueMediumSweep(uint32_t low_freq = 800, uint32_t high_freq = 970, uint32_t cycles = 4);
+    void queueMediumSweep(uint32_t low_freq = 800, uint32_t high_freq = 970,
+                          uint32_t cycles = 4, uint32_t cycle_ms = 1000);
     void queueAlternating(uint32_t low_freq = 800, uint32_t high_freq = 970, uint32_t cycles = 0);
 
     // Process pending patterns (call from main thread)
@@ -120,5 +123,6 @@ private:
     std::atomic<uint32_t> pendingFreq{0};
     std::atomic<uint32_t> pendingDuration{0};
     std::atomic<uint32_t> pendingCycles{0};
+    std::atomic<uint32_t> pendingCycleMs{1000};
 };
 

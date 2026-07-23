@@ -15,8 +15,10 @@
 #include <cstdio>
 #include <cstring>
 
-DigitalTwinApplication::DigitalTwinApplication(Logger* logger, LowLevel* lowLevel, State* state)
-    : logger_(logger), lowLevel_(lowLevel), state_(state) {}
+DigitalTwinApplication::DigitalTwinApplication(Logger* logger, LowLevel* lowLevel, State* state,
+                                               RGBLED* rgbLed)
+    : logger_(logger), lowLevel_(lowLevel), state_(state),
+      rgbLed_(rgbLed), owns_rgb_led_(rgbLed == nullptr) {}
 
 DigitalTwinApplication::~DigitalTwinApplication() {
     delete bleTwin_;
@@ -24,7 +26,7 @@ DigitalTwinApplication::~DigitalTwinApplication() {
     delete sideButtons_;
     delete haptics_;
     delete buzzer_;
-    delete rgbLed_;
+    if (owns_rgb_led_) delete rgbLed_;
     if (event_queue_) vQueueDelete(event_queue_);
 }
 
@@ -63,6 +65,15 @@ void DigitalTwinApplication::onBothHold() {
         logger_->LOGW(TAG, "Ignore BOTH_HOLD during fire");
         return;
     }
+    // Debounce here (not in SideButtons) so button momentary path stays simple.
+    const TickType_t now = xTaskGetTickCount();
+    constexpr TickType_t kBothHoldDebounce = pdMS_TO_TICKS(3000);
+    if (last_both_hold_tick_ != 0 && (now - last_both_hold_tick_) < kBothHoldDebounce) {
+        logger_->LOGW(TAG, "Ignore BOTH_HOLD (debounce)");
+        return;
+    }
+    last_both_hold_tick_ = now;
+
     if (indications_->current().alert == ilss::TwinAlert::Personal) {
         // Toggle clear when already in personal
         auto idle = ilss::TwinState::idle();
@@ -151,9 +162,22 @@ void DigitalTwinApplication::begin() {
     logger_->LOGI(TAG, "Starting digital twin application");
     event_queue_ = xQueueCreate(16, sizeof(AppEvent));
 
-    rgbLed_ = new RGBLED(state_);
-    rgbLed_->begin();
-    // Power-up flourish already ran in main; go straight to unpaired ready.
+    // Prefer the boot strip (already owns RMT on the LED GPIO). Re-begin()
+    // here used to log "GPIO is not usable, maybe conflict with others".
+    if (!rgbLed_) {
+        rgbLed_ = new RGBLED(state_);
+        owns_rgb_led_ = true;
+        if (!rgbLed_->begin()) {
+            logger_->LOGE(TAG, "RGBLED begin failed");
+        }
+    } else if (!rgbLed_->isReady()) {
+        if (!rgbLed_->begin()) {
+            logger_->LOGE(TAG, "RGBLED begin failed");
+        }
+    } else {
+        rgbLed_->stopEffect();
+        logger_->LOGI(TAG, "Reusing boot RGBLED strip");
+    }
 
     buzzer_ = new Buzzer(state_, lowLevel_);
     buzzer_->begin();

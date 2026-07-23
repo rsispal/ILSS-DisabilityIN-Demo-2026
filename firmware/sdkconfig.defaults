@@ -1,2 +1,12 @@
 # Larger NimBLE host stack — GAP handlers + ATT notify need headroom on ESP32-S3.
 CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE=8192
+
+# Keep FreeRTOS software timers (buzzer Code-3 steps) off NimBLE's core.
+CONFIG_FREERTOS_TIMER_TASK_AFFINITY_CPU1=y
+
+# Advertise preferred connection parameters (units: interval=1.25ms, supervision=10ms).
+# Hint centrals toward a longer supervision timeout under alert EMI.
+CONFIG_BT_NIMBLE_SVC_GAP_PPCP_MIN_CONN_INTERVAL=24
+CONFIG_BT_NIMBLE_SVC_GAP_PPCP_MAX_CONN_INTERVAL=80
+CONFIG_BT_NIMBLE_SVC_GAP_PPCP_SLAVE_LATENCY=0
+CONFIG_BT_NIMBLE_SVC_GAP_PPCP_SUPERVISION_TMO=2000

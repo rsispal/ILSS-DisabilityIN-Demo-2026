@@ -5,6 +5,7 @@
 #include "bluetooth/BluetoothLowLevelDriver.h"
 #include "buzzer/BuzzerLowLevelDriver.h"
 #include "haptics/DRV2605Driver.h"
+#include "crypto/ATECC608BDriver.h"
 #include "../application/Hardware.h"
 #include "../utils/Logger.h"
 
@@ -15,16 +16,20 @@ LowLevel::LowLevel(Logger* logger) {
     m_bluetooth_driver = new BluetoothLowLevelDriver(this->logger);
     m_buzzer_driver = new BuzzerLowLevelDriver(HARDWARE_BUZZER_PIN);
     m_i2c_driver = new I2CLowLevelDriver(HARDWARE_I2C_NUM, HARDWARE_DRV2605_I2C_ADDR);
+    m_i2c_crypto_driver = new I2CLowLevelDriver(*m_i2c_driver, HARDWARE_ATECC608B_I2C_ADDR);
     m_haptics_driver = new DRV2605Driver(m_i2c_driver);
+    m_crypto_driver = new ATECC608BDriver(m_i2c_crypto_driver);
 }
 
 LowLevel::~LowLevel() {
+    delete m_crypto_driver;
+    delete m_haptics_driver;
+    delete m_i2c_crypto_driver;
+    delete m_i2c_driver;
     delete m_nvs_driver;
     delete m_usb_driver;
-    delete m_i2c_driver;
     delete m_bluetooth_driver;
     delete m_buzzer_driver;
-    delete m_haptics_driver;
 }
 
 bool LowLevel::begin() {
@@ -44,10 +49,17 @@ bool LowLevel::begin() {
 
     if (m_i2c_driver && !m_i2c_driver->begin(HARDWARE_I2C_SDA_PIN, HARDWARE_I2C_SCL_PIN, HARDWARE_I2C_CLOCK_SPEED)) {
         logger->LOGW(TAG, "I2C initialization failed, continuing with other drivers.");
+    } else if (m_i2c_crypto_driver &&
+               !m_i2c_crypto_driver->beginShared(HARDWARE_I2C_CLOCK_SPEED)) {
+        logger->LOGW(TAG, "ATECC I2C device attach failed, continuing.");
     }
 
     if (m_haptics_driver && !m_haptics_driver->begin()) {
         logger->LOGW(TAG, "Haptics initialization failed, continuing with other drivers.");
+    }
+
+    if (m_crypto_driver && !m_crypto_driver->begin()) {
+        logger->LOGW(TAG, "ATECC608B initialization failed, continuing with other drivers.");
     }
 
     if (m_buzzer_driver && !m_buzzer_driver->begin()) {

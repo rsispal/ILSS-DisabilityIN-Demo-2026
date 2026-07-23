@@ -18,7 +18,12 @@ class DigitalTwinApplication {
     const char* TAG = "DigitalTwinApp";
 
 public:
-    DigitalTwinApplication(Logger* logger, LowLevel* lowLevel, State* state);
+    /**
+     * @param rgbLed Optional already-begun strip from boot (avoids double RMT on GPIO1).
+     *               Ownership stays with the caller when non-null.
+     */
+    DigitalTwinApplication(Logger* logger, LowLevel* lowLevel, State* state,
+                           RGBLED* rgbLed = nullptr);
     ~DigitalTwinApplication();
 
     void begin();  // blocks in FreeRTOS event loop
@@ -29,6 +34,7 @@ private:
     State* state_;
 
     RGBLED* rgbLed_ = nullptr;
+    bool owns_rgb_led_ = true;
     Buzzer* buzzer_ = nullptr;
     Haptics* haptics_ = nullptr;
     SideButtons* sideButtons_ = nullptr;
@@ -38,6 +44,8 @@ private:
     QueueHandle_t event_queue_ = nullptr;
     TaskHandle_t led_task_ = nullptr;
     TaskHandle_t buzzer_task_ = nullptr;
+    /** Ignore repeat BOTH_HOLD within this window (ms) — app-level PA debounce. */
+    TickType_t last_both_hold_tick_ = 0;
 
     enum class AppEventType : uint8_t {
         ButtonBothHold,
