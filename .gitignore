@@ -1,7 +1,55 @@
-.DS_Store
-
 # Frontend (React/Vite)
 frontend/node_modules/
 frontend/dist/
 
 # TODO: Each sub-repo will have its own .gitignore file (pcb = kicad gitignore, firmware = esp-idf/embedded/c++ gitignore, frontend = react/vite gitignore)
+
+ILSS_LANYARD-backups/
+
+# macOS system files (match at repo root and any nested path)
+.DS_Store
+**/.DS_Store
+.AppleDouble
+._*
+.Spotlight-V100
+.Trashes
+
+# Git-related files
+.git/
+*.orig
+*auto_saved_files*
+
+# Other files
+node_modules/
+*.log
+*.tmp
+*.bak
+*.cache
+
+# KiCad backup and temporary files
+*.bak
+*.b#?
+*.kicad_pcb-bak
+*.autosave
+*.tmp
+*.lock
+*.lck
+KiCad project/*autosave*
+
+# Simulation data
+*.raw
+*.spice
+*.plt
+
+# User-specific KiCad local/layout prefs
+*.kicad_prl
+**/*.kicad_prl
+
+# Symbol and footprint library cache
+sym-lib-table
+fp-lib-table
+*.dcm
+
+# Generated output folders
+fabrication/
+manufacturing/
