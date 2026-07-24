@@ -1,8 +1,11 @@
 /**
  * Self-contained PostHog analytics facade for the ILSS demo.
  *
- * Page views come from posthog-js (via defaults). Custom events go through
- * `captureEvent` on the same client mounted by PostHogProvider in main.tsx.
+ * Web Analytics (pageviews / traffic) and Product Analytics (custom events) both
+ * come from the same posthog-js + PostHogProvider setup in main.tsx — there are
+ * no separate “web” / “product” packages to install.
+ *
+ * Custom events go through `captureEvent` on the provider-initialised client.
  * Call sites never throw into app logic.
  *
  * Reporting is gated to the Vercel production deployment only (not preview, not localhost).
