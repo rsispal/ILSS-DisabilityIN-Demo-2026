@@ -1,6 +1,9 @@
 # Frontend (React/Vite)
 frontend/node_modules/
 frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
 
 # TODO: Each sub-repo will have its own .gitignore file (pcb = kicad gitignore, firmware = esp-idf/embedded/c++ gitignore, frontend = react/vite gitignore)
 

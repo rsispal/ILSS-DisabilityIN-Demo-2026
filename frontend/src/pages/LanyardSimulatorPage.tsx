@@ -24,6 +24,7 @@ import { useBleTwin } from '@/context/BleTwinContext';
 import { COLORS } from '@/lib/constants/colors';
 import { IDLE, IDLE_DISPLAY_BRIGHTNESS } from '@/lib/constants/patterns';
 import { twinStateKey } from '@/lib/ble/twinState';
+import { ilssAnalytics } from '@/lib/analytics/ilssAnalytics';
 import type { DeviceState, PressedButton } from '@/types/simulator';
 
 export function LanyardSimulatorPage() {
@@ -111,6 +112,9 @@ export function LanyardSimulatorPage() {
       const key = twinStateKey(remote);
       // Already mirroring this exact twin snapshot (Status often duplicates Event).
       if (key === lastSyncedKey.current) return;
+      if (remote.alert === 'personal' && cur.alert !== 'personal') {
+        ilssAnalytics.personalAlertFromLanyard();
+      }
       suppressOutbound.current += 1;
       lastSyncedKey.current = key;
       setCh(remote);
@@ -168,16 +172,60 @@ export function LanyardSimulatorPage() {
 
   const onFire = () => {
     if (st.alert === 'personal') return;
+    ilssAnalytics.fireSimulation();
     firePreset();
   };
   const onPersonal = () => {
     if (st.alert === 'fire') return;
+    ilssAnalytics.personalAlertSimulation();
     personalPreset();
+  };
+
+  const onMutedChange = (nextMuted: boolean) => {
+    ilssAnalytics.audioIndication(!nextMuted);
+    if (
+      !nextMuted &&
+      st.alert === 'none' &&
+      st.buzzer !== 'silent' &&
+      st.buzzer !== 'off'
+    ) {
+      ilssAnalytics.customSound({ pattern: st.buzzer });
+    }
+    setMuted(nextMuted);
+  };
+
+  const openLogs = () => {
+    ilssAnalytics.logsViewed();
+    setLogsOpen(true);
   };
 
   const onChangeAdvanced = (patch: Partial<DeviceState>) => {
     if (st.alert !== 'none' && (patch.color !== undefined || patch.led !== undefined)) {
       // Advanced LED changes clear alert on web panels already via alert:'none'
+    }
+    if (patch.color !== undefined || patch.led !== undefined) {
+      ilssAnalytics.customLed({
+        color: patch.color ?? st.color,
+        pattern: patch.led ?? st.led,
+        brightness: patch.brightness ?? st.brightness,
+      });
+    } else if (patch.brightness !== undefined) {
+      // Brightness-only: track once per discrete change (slider steps of 10).
+      ilssAnalytics.customLed({
+        color: st.color,
+        pattern: st.led,
+        brightness: patch.brightness,
+      });
+    }
+    if (patch.buzzer !== undefined) {
+      ilssAnalytics.customBuzzer({ pattern: patch.buzzer });
+      if (
+        !muted &&
+        patch.buzzer !== 'silent' &&
+        patch.buzzer !== 'off'
+      ) {
+        ilssAnalytics.customSound({ pattern: patch.buzzer });
+      }
     }
     setCh(patch);
   };
@@ -257,7 +305,7 @@ export function LanyardSimulatorPage() {
             st={st}
             muted={muted}
             onChange={onChangeAdvanced}
-            onMutedChange={setMuted}
+            onMutedChange={onMutedChange}
           />
         </>
       }
@@ -282,13 +330,13 @@ export function LanyardSimulatorPage() {
             onClearFire={clearFire}
             onClearPersonal={clearPersonal}
             onChange={onChangeAdvanced}
-            onMutedChange={setMuted}
+            onMutedChange={onMutedChange}
             customActive={customActive}
             customResetSeconds={customResetSeconds}
             customRemainingMs={customRemainingMs}
             onResetCustom={resetToIdle}
             onOpenExperiments={() => setExpOpen(true)}
-            onOpenLogs={flags.deviceLogs ? () => setLogsOpen(true) : undefined}
+            onOpenLogs={flags.deviceLogs ? openLogs : undefined}
             onManageConnection={() => setBleOpen(true)}
           />
         ) : undefined
@@ -299,7 +347,7 @@ export function LanyardSimulatorPage() {
             <ExperimentsFab
               onOpen={() => setExpOpen(true)}
               showLogs={flags.deviceLogs}
-              onOpenLogs={() => setLogsOpen(true)}
+              onOpenLogs={openLogs}
             />
           )}
           {expOpen && (

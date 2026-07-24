@@ -46,6 +46,7 @@ import {
   isAdvancedPatch,
 } from '@/lib/ble/twinState';
 import { parseDeviceLog, type ParsedDeviceLog } from '@/lib/ble/parseDeviceLog';
+import { ilssAnalytics } from '@/lib/analytics/ilssAnalytics';
 
 export type BleTwinStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -155,6 +156,8 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
   const writePacketRef = useRef<(pkt: Packet) => Promise<boolean>>(async () => false);
   const forceLinkLostRef = useRef<(why: string) => void>(() => undefined);
   const suppressDisconnectMsgRef = useRef(false);
+  /** Avoid double-reporting pairing analytics when disconnect + catch both fire. */
+  const pairingAnalyticsSentRef = useRef(false);
 
   const supported = typeof navigator !== 'undefined' && !!navigator.bluetooth;
 
@@ -217,6 +220,13 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
         ? 'W (ble) gattserverdisconnected during connect/setup'
         : 'W (ble) gattserverdisconnected',
     );
+    if (wasConnecting && !pairingAnalyticsSentRef.current) {
+      pairingAnalyticsSentRef.current = true;
+      ilssAnalytics.pairingIssue({
+        reason: 'timeout',
+        message: 'Disconnected during connect/setup',
+      });
+    }
     setStatus('disconnected');
     setName(null);
     setPaired(false);
@@ -384,6 +394,13 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
         setPaired(true);
         lastHeartbeatAtRef.current = Date.now();
         appendLog(`I (ble) paired deviceUuid=${hexPreview(uuid, 16)}`);
+        if (!pairingAnalyticsSentRef.current) {
+          pairingAnalyticsSentRef.current = true;
+          ilssAnalytics.pairingSucceeded({
+            simulated: false,
+            name: deviceRef.current?.name ?? null,
+          });
+        }
       } else if (op === 0x03) {
         setPaired(false);
         appendLog('I (ble) unpaired');
@@ -543,9 +560,14 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
     if (!navigator.bluetooth) {
       setMsg('Web Bluetooth isn’t available in this browser.');
       appendLog('E (ble) navigator.bluetooth unavailable');
+      ilssAnalytics.pairingIssue({
+        reason: 'unsupported',
+        message: 'navigator.bluetooth unavailable',
+      });
       return;
     }
     connectingRef.current = true;
+    pairingAnalyticsSentRef.current = false;
     try {
       setStatus('connecting');
       appendLog('I (ble) requestDevice (Twin service + ILSS-LY name prefix)');
@@ -634,11 +656,32 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
       if (error?.name === 'NotFoundError') {
         appendLog('W (ble) requestDevice cancelled / no device');
         setMsg('No device selected.');
+        if (!pairingAnalyticsSentRef.current) {
+          pairingAnalyticsSentRef.current = true;
+          ilssAnalytics.pairingIssue({
+            reason: 'cancelled',
+            message: 'No device selected',
+          });
+        }
       } else if (error?.name === 'SecurityError') {
         logGattErr('pair', err);
         setMsg('Bluetooth is blocked by the browser’s permissions here.');
+        if (!pairingAnalyticsSentRef.current) {
+          pairingAnalyticsSentRef.current = true;
+          ilssAnalytics.pairingIssue({
+            reason: 'error',
+            message: errDetail(err),
+          });
+        }
       } else {
         logGattErr('pair', err);
+        if (!pairingAnalyticsSentRef.current) {
+          pairingAnalyticsSentRef.current = true;
+          ilssAnalytics.pairingIssue({
+            reason: 'error',
+            message: errDetail(err),
+          });
+        }
       }
       try {
         if (deviceRef.current?.gatt?.connected) deviceRef.current.gatt.disconnect();
@@ -678,6 +721,7 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
       lastHeartbeatAtRef.current = Date.now();
       appendLog('I (sim) simulated device connected');
       appendLog('I (DigitalTwinApp) Digital twin running');
+      ilssAnalytics.pairingSucceeded({ simulated: true, name: 'ILSS-LY · SIM' });
     }, 750);
   }, [appendLog]);
 
