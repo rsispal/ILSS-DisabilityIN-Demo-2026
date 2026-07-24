@@ -135,6 +135,8 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<DeviceLogLine[]>([]);
   const [paired, setPaired] = useState(false);
   const [linkLost, setLinkLost] = useState(false);
+  const metadataRef = useRef<DeviceMetadata | null>(null);
+  metadataRef.current = metadata;
 
   const deviceRef = useRef<BluetoothDevice | null>(null);
   const serverRef = useRef<BluetoothRemoteGATTServer | null>(null);
@@ -230,6 +232,8 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
     setStatus('disconnected');
     setName(null);
     setPaired(false);
+    setMetadata(null);
+    ilssAnalytics.setLanyardSerial(null);
     if (!suppressDisconnectMsgRef.current) setMsg('Device disconnected');
     suppressDisconnectMsgRef.current = false;
     cmdCharRef.current = null;
@@ -399,10 +403,12 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
           ilssAnalytics.pairingSucceeded({
             simulated: false,
             name: deviceRef.current?.name ?? null,
+            serial: metadataRef.current?.serial ?? null,
           });
         }
       } else if (op === 0x03) {
         setPaired(false);
+        ilssAnalytics.setLanyardSerial(null);
         appendLog('I (ble) unpaired');
       }
     },
@@ -601,6 +607,7 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
         readU8(await meta.getCharacteristic(UUID_BATT)),
       ]);
       setMetadata({ serial, model, software, brand, battery });
+      ilssAnalytics.setLanyardSerial(serial);
       appendLog(
         `I (ble) metadata serial=${serial} model=${model} sw=${software} brand=${brand} batt=${battery}`,
       );
@@ -721,7 +728,11 @@ export function BleTwinProvider({ children }: { children: ReactNode }) {
       lastHeartbeatAtRef.current = Date.now();
       appendLog('I (sim) simulated device connected');
       appendLog('I (DigitalTwinApp) Digital twin running');
-      ilssAnalytics.pairingSucceeded({ simulated: true, name: 'ILSS-LY · SIM' });
+      ilssAnalytics.pairingSucceeded({
+        simulated: true,
+        name: 'ILSS-LY · SIM',
+        serial: 'ILSS-LY-SIM',
+      });
     }, 750);
   }, [appendLog]);
 

@@ -11,7 +11,7 @@
  * Reporting is gated to the Vercel production deployment only (not preview, not localhost).
  * We skip `identify()` — this demo has no authenticated user IDs (PostHog anon distinct_id is fine).
  */
-import { captureEvent } from './initAnalytics';
+import { captureEvent, setLanyardSerial as bindLanyardSerial } from './initAnalytics';
 
 type Props = Record<string, string | number | boolean | null>;
 
@@ -24,10 +24,17 @@ export type PairingIssueReason = 'error' | 'timeout' | 'cancelled' | 'unsupporte
 /**
  * Typed analytics helpers for demo interactions.
  * Event names are stable — rename carefully (they appear in the PostHog dashboard).
+ * When a lanyard is paired, `lanyard_serial` is attached to all events.
  */
 export const ilssAnalytics = {
+  /** Remember / clear the connected device serial for all subsequent events. */
+  setLanyardSerial(serial: string | null) {
+    bindLanyardSerial(serial);
+  },
+
   /** Lanyard BLE (or simulate) pairing completed successfully. */
-  pairingSucceeded(data?: { simulated?: boolean; name?: string | null }) {
+  pairingSucceeded(data?: { simulated?: boolean; name?: string | null; serial?: string | null }) {
+    if (data?.serial) bindLanyardSerial(data.serial);
     safeTrack('Lanyard Pairing Succeeded', {
       simulated: data?.simulated ?? false,
       name: data?.name ?? null,
@@ -47,9 +54,19 @@ export const ilssAnalytics = {
     safeTrack('Fire Simulation');
   },
 
+  /** User cleared / stood down a fire simulation. */
+  fireSimulationReset() {
+    safeTrack('Fire Simulation Reset');
+  },
+
   /** User ran the personal alert simulation from the web UI / browser. */
   personalAlertSimulation() {
     safeTrack('Personal Alert Simulation');
+  },
+
+  /** User cleared / stood down a personal alert simulation. */
+  personalAlertSimulationReset() {
+    safeTrack('Personal Alert Simulation Reset');
   },
 
   /** Personal alert state arrived from the physical lanyard. */

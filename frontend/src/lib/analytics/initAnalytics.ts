@@ -14,12 +14,45 @@ import { isAnalyticsEnabled } from './isAnalyticsEnabled';
 
 type Props = Record<string, string | number | boolean | null>;
 
+const LANYARD_SERIAL_KEY = 'lanyard_serial';
+
+/** Current paired device serial — merged into every custom event. */
+let lanyardSerial: string | null = null;
+
+function withDeviceProps(data?: Props): Props | undefined {
+  if (!lanyardSerial && !data) return undefined;
+  return {
+    ...(data ?? {}),
+    [LANYARD_SERIAL_KEY]: lanyardSerial,
+  };
+}
+
+/**
+ * Attach / clear the paired lanyard serial on all subsequent PostHog events
+ * (custom + autocapture) via super-properties, and for explicit captures.
+ */
+export function setLanyardSerial(serial: string | null): void {
+  lanyardSerial = serial && serial.trim() ? serial.trim() : null;
+  if (!isAnalyticsEnabled()) return;
+  try {
+    if (!posthog.__loaded) return;
+    if (lanyardSerial) {
+      posthog.register({ [LANYARD_SERIAL_KEY]: lanyardSerial });
+    } else {
+      posthog.unregister(LANYARD_SERIAL_KEY);
+    }
+  } catch {
+    /* never interfere with the app */
+  }
+}
+
 /** Capture once the provider has initialised the global client. */
 export function captureEvent(name: string, data?: Props): void {
   if (!isAnalyticsEnabled()) return;
   try {
     if (!posthog.__loaded) return;
-    if (data) posthog.capture(name, data);
+    const props = withDeviceProps(data);
+    if (props) posthog.capture(name, props);
     else posthog.capture(name);
   } catch {
     /* never interfere with the app */

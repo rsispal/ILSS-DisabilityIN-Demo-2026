@@ -180,6 +180,16 @@ export function LanyardSimulatorPage() {
     ilssAnalytics.personalAlertSimulation();
     personalPreset();
   };
+  const onClearFire = () => {
+    if (st.alert !== 'fire') return;
+    ilssAnalytics.fireSimulationReset();
+    clearFire();
+  };
+  const onClearPersonal = () => {
+    if (st.alert !== 'personal') return;
+    ilssAnalytics.personalAlertSimulationReset();
+    clearPersonal();
+  };
 
   const onMutedChange = (nextMuted: boolean) => {
     ilssAnalytics.audioIndication(!nextMuted);
@@ -255,10 +265,10 @@ export function LanyardSimulatorPage() {
       introPulse={introPhase === 'play'}
       heartbeatPulse={hbPulse}
       onPressPersonal={() =>
-        press('personal', () => (st.alert === 'personal' ? clearPersonal() : onPersonal()))
+        press('personal', () => (st.alert === 'personal' ? onClearPersonal() : onPersonal()))
       }
       onPressFire={() =>
-        press('fire', () => (st.alert === 'fire' ? clearFire() : onFire()))
+        press('fire', () => (st.alert === 'fire' ? onClearFire() : onFire()))
       }
     />
   );
@@ -281,9 +291,9 @@ export function LanyardSimulatorPage() {
           <EmergencyControls
             alert={st.alert}
             onPersonal={onPersonal}
-            onClearPersonal={clearPersonal}
+            onClearPersonal={onClearPersonal}
             onFire={onFire}
-            onClearFire={clearFire}
+            onClearFire={onClearFire}
             customActive={customActive}
             customResetSeconds={customResetSeconds}
             customRemainingMs={customRemainingMs}
@@ -327,8 +337,8 @@ export function LanyardSimulatorPage() {
             muted={muted}
             onFire={onFire}
             onPersonal={onPersonal}
-            onClearFire={clearFire}
-            onClearPersonal={clearPersonal}
+            onClearFire={onClearFire}
+            onClearPersonal={onClearPersonal}
             onChange={onChangeAdvanced}
             onMutedChange={onMutedChange}
             customActive={customActive}
